@@ -1,0 +1,3 @@
+All:
+	gcc -c *.c
+	gcc -o main *.o
