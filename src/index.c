@@ -12,12 +12,25 @@ typedef struct index_node
     char *key; //palavra-chave
     int num_ocorrences;
     Occurrences *occurrences_list; //ocorrencias
+    struct index_node *collisions; //colisoes
 } Index_node;
 struct index
 {
     char *text_file; //nome do arquivo de texto
     Index_node **array;
 };
+static char *substring(char *source, int beg, int end)
+{
+    char *sub = (char *)malloc(sizeof(char) * (end - beg + 1));
+    int j = 0;
+    for (int i = beg; i < end; i++)
+    {
+        sub[j] = source[i];
+        j++;
+    }
+    sub[j] = '\0';
+    return sub;
+}
 static char *replace_char(char *input, char find, char replace)
 {
     /*funcao para trocar um caractere. 
@@ -46,10 +59,10 @@ static int index_hashing_funct(const char *key)
         int result = 0;
         int off = 0;
         int i = 0;
+        int factor = 4;
         while (key[i] != '\0')
         {
-            result = 4 * result + key[i];
-            //printf("valor de key[i]: %d\n", key[i]);
+            result = factor * result + key[i];
             i++;
         }
         return (result % M);
@@ -57,128 +70,207 @@ static int index_hashing_funct(const char *key)
     else
         return -1;
 }
-int index_readFile(char **strstream, const char *file_name)
+/**
+ * Opens a file and saves its contents in a char*
+ */
+
+static int index_readfile(char **strstream, const char *file_name)
 {
     FILE *input;
     input = fopen(file_name, "r");
+    unsigned int buffer_size = 256;
     if (!input)
     {
-        fprintf(stderr, "Failed to open the file!\n");
+        fprintf(stdout, "Failed to open the file!\n");
         return false;
     }
     else
     {
-        if (*strstream)
-            free(*strstream);
-        unsigned int buffer_size = 256;
+        printf("to aqui\n");
         *strstream = calloc(1, 1); //aloca e inicia tudo com 0
         char buffer[buffer_size];
         while (fgets(buffer, buffer_size, input)) // read from stdin
         {
             (*strstream) = realloc((*strstream), strlen(*strstream) + 1 + strlen(buffer));
-            if (!(*strstream))
+            if (!strstream)
             {
                 return false;
             }
             strcat((*strstream), buffer);
         }
         fclose(input);
+        printf("Texto:\n%s\n", *strstream);
         return true;
     }
 }
-int index_createfrom(const char *key_file, const char *text_file, Index **idx)
+static int index_addkeys(const char *key_file, Index **idx)
 {
     char *search = "\n";
     char *token;
     char *strstream;
-    //le o key_file
-    if (index_readFile(&strstream, key_file) == false)
+    if (index_readfile(&strstream, key_file) == false)
         return false;
     printf("CHAVES: \n%s\n", strstream);
-    token = strtok(strstream, search); //divide tudo em linhas;
-    if (token)
+    token = strtok(strstream, search);
+    if (!token || !(*idx))
+        return false;
+    while (token)
     {
-        (*idx) = (Index *)malloc(sizeof(Index));
-        (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
-        strcpy((*idx)->text_file, text_file);
-        (*idx)->array = malloc(M * sizeof(Index_node *)); //alocacao dinamica de um array de ponteiros de index_node
-        while (token)
+        int index = index_hashing_funct(token);
+        printf("Token: %s \tIndice: %d\n", token, index);
+        if (index >= 0)
         {
-            int index = index_hashing_funct(token);
-            printf("Token: %s \tIndice: %d\n", token, index);
-            if (index >= 0)
+            if (!(*idx)->array[index])
             {
-                if (!(*idx)->array[index])
-                {
-                    (*idx)->array[index] = (Index_node *)malloc(sizeof(Index_node));
-                    (*idx)->array[index]->key = token;
-                    (*idx)->array[index]->num_ocorrences = 0;
-                }
-                else
-                {
-                    //ja existe elemento nesse indice
-                }
+                printf("criando no\n");
+                (*idx)->array[index] = (Index_node *)malloc(sizeof(Index_node));
+                (*idx)->array[index]->key = token;
+                (*idx)->array[index]->occurrences_list = NULL;
+                (*idx)->array[index]->collisions = NULL;
+                (*idx)->array[index]->num_ocorrences = 0;
             }
             else
             {
-                //algum erro na criacao do indice
-                free((*idx)->text_file);
-                free((*idx)->array);
-                printf("deu erro na criacao do indice!\n");
-                return false;
+                //cria colisao
+                Index_node *it = (*idx)->array[index];
+                Index_node *ant = NULL;
+                while (it && (strcmp(it->key, token) != 0))
+                {
+                    ant = it;
+                    it = it->collisions;
+                }
+                if (!it)
+                {
+                    //elemento ainda nao existe na lista
+                    ant->collisions = (Index_node *)malloc(sizeof(Index_node));
+                    ant->collisions->key = token;
+                    ant->collisions->occurrences_list = NULL;
+                    ant->collisions->collisions = NULL;
+                    ant->collisions->num_ocorrences = 0;
+                }
             }
-            token = strtok(NULL, search);
         }
+        token = strtok(NULL, search);
     }
-    else
-        return false; //arquivo de entrada vazio
-                      //le texto
-    if (index_readFile(&strstream, text_file) == false)
+    return true;
+}
+static int index_addtext(const char *text_file, Index **idx, int clean)
+{
+    if (!idx)
         return false;
-    replace_char(strstream, '\n', ' ');
-    char *search_temp = " ";
-    printf("Texto:\n%s\n", strstream);
-    token = strtok(strstream, search_temp); //divide tudo em linhas;
-    if (token)
+    if (clean == true)
     {
-        int line = 1;
-        while (token)
+        for (unsigned int i = 0; i < M; i++)
         {
-            int token_len = strlen(token);
-            //if ((token[token_len - 1] >= 33 && token[token_len - 1] <= 47) || (token[token_len - 1] >= 58 && token[token_len - 1] <= 64))
-            //  token[token_len - 1] = '\0';
-            int index = index_hashing_funct(token);
-            printf("Token-2: %s \tIndice: %d\n", token, index);
-            if (index >= 0 && (*idx)->array[index])
+            Index_node *it = (*idx)->array[i];
+            while (it)
             {
-                if (!(*idx)->array[index]->occurrences_list)
+                Occurrences *ant = NULL, *it_o = it->occurrences_list;
+                while (it_o)
                 {
-                    (*idx)->array[index]->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
-                    (*idx)->array[index]->occurrences_list->line = line;
-                    (*idx)->array[index]->occurrences_list->next = NULL;
-                    (*idx)->array[index]->num_ocorrences++;
+                    ant = it_o;
+                    it_o = it_o->next;
+                    //free(ant);
+                    ant = NULL;
                 }
-                else
+                it = it->collisions;
+            }
+        }
+    }
+    char *search = "\n";
+    char *strstream;
+    char *token;
+    char *token_space;
+    int beg;
+    if (index_readfile(&strstream, text_file) == false)
+        return false;
+    token = strtok(strstream, search); //divide tudo em linhas;
+    if (!token)
+        return false;
+    int line = 1;
+    while (token)
+    {
+        token_space = strchr(token, ' ');
+        beg = 0;
+        int next_line = false;
+        while (next_line == false)
+        {
+            char *sub;
+            if (!token_space)
+            {
+                sub = substring(token, beg, strlen(token));
+                next_line = true;
+            }
+            else
+                sub = substring(token, beg, token_space - token);
+            beg = token_space - token + 1;
+            //int token_len = strlen(tk);
+            int index = index_hashing_funct(sub);
+            printf("Token-2: %s\tIndice: %d\n", sub, index);
+            if (index >= 0 && (*idx)->array[index] != NULL)
+            {
+                Index_node *it = (*idx)->array[index];
+                while (it && strcmp(it->key, sub) != 0)
                 {
-                    Occurrences *it = (*idx)->array[index]->occurrences_list;
-                    while (it->next)
+                    it = it->collisions;
+                }
+                if (it)
+                {
+                    if (!it->occurrences_list)
                     {
-                        it = it->next;
+                        printf("to na delicinha da chave: %s\n", sub);
+
+                        it->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
+                        it->occurrences_list->line = line;
+                        it->occurrences_list->next = NULL;
+                        it->num_ocorrences++;
                     }
-                    Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
-                    c->line = line;
-                    c->next = NULL;
-                    it->next = c;
-                    (*idx)->array[index]->num_ocorrences++;
+                    else
+                    {
+                        printf("to na desgraca da chave: %s\n", sub);
+                        Occurrences *it_o = it->occurrences_list;
+                        while (it_o->next)
+                        {
+                            it_o = it_o->next;
+                            printf("to em um loop infinito demoniaco\n");
+                        }
+                        Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
+                        c->line = line;
+                        c->next = NULL;
+                        it_o->next = c;
+                        it->num_ocorrences++;
+                    }
                 }
             }
-            token = strtok(NULL, search_temp);
+            if (token_space)
+                token_space = strchr(token_space + 1, ' ');
+            free(sub);
         }
-        return true;
+        //if ((token[token_len - 1] >= 33 && token[token_len - 1] <= 47) || (token[token_len - 1] >= 58 && token[token_len - 1] <= 64))
+        //  token[token_len - 1] = '\0';
+        token = strtok(NULL, search);
+        line++;
     }
-    else
-        return false; //arquivo de entrada vazio
-                      //le texto
+    free(token);
+    free(strstream);
+    return true;
+}
+int index_createfrom(const char *key_file, const char *text_file, Index **idx)
+{
+    (*idx) = (Index *)malloc(sizeof(Index));
+    (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
+    strcpy((*idx)->text_file, text_file);
+    (*idx)->array = malloc(M * sizeof(Index_node *)); //alocacao dinamica de um array de ponteiros de index_node
+    for (unsigned int i = 0; i < M; i++)
+    {
+        (*idx)->array[i] = NULL;
+    }
+    if (index_addkeys(key_file, idx) == false)
+        return false;
+    if (index_addtext(text_file, idx, false) == false)
+        return false;
+
+    return true;
 }
 int index_get(const Index *idx, const char *key, int **occurrences, int *num_occurrences)
 {
@@ -207,63 +299,45 @@ int index_put(Index *idx, const char *key)
 {
     if (idx)
     {
+        //limpa as ocorrencias da tabela
         int index_key = index_hashing_funct(key);
-        if (!idx->array[index_key])
+        if (index_key >= 0)
         {
-            idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
-            strcpy(idx->array[index_key]->key, key);
-            idx->array[index_key]->num_ocorrences = 0;
-        }
-        else //le o texto de novo
-        {
-            char *strstream;
-            char *token;
-            char *search = "\n";
-            if (index_readFile(&strstream, idx->text_file) == false)
-                return false;
-            replace_char(strstream, '\n', ' ');
-            char *search_temp = " ";
-            token = strtok(strstream, search_temp); //divide tudo em linhas;
-            if (token)
+            if (!idx->array[index_key])
             {
-                int line = 1;
-                while (token)
-                {
-
-                    int token_len = strlen(token);
-                    if ((token[token_len - 1] >= 33 && token[token_len - 1] <= 47) || (token[token_len - 1] >= 58 && token[token_len - 1] <= 64))
-                        token[token_len - 1] = '\0';
-                    int index = index_hashing_funct(token);
-                    if (index >= 0 && index == index_key)
-                    {
-                        if (!idx->array[index]->occurrences_list)
-                        {
-                            idx->array[index]->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
-                            idx->array[index]->occurrences_list->line = line;
-                            idx->array[index]->occurrences_list->next = NULL;
-                            idx->array[index]->num_ocorrences++;
-                        }
-                        else
-                        {
-                            Occurrences *it = idx->array[index]->occurrences_list;
-                            while (it->next)
-                            {
-                                it = it->next;
-                            }
-                            Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
-                            c->line = line;
-                            c->next = NULL;
-                            it->next = c;
-                            idx->array[index]->num_ocorrences++;
-                        }
-                    }
-                    token = strtok(NULL, search);
-                }
-                return true;
+                printf("criando no\n");
+                idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
+                idx->array[index_key]->key = (char *)malloc(sizeof(char) * strlen(key));
+                strcpy(idx->array[index_key]->key, key);
+                idx->array[index_key]->occurrences_list = NULL;
+                idx->array[index_key]->collisions = NULL;
+                idx->array[index_key]->num_ocorrences = 0;
             }
             else
-                return false; //arquivo de entrada vazio
+            {
+                //cria colisao
+                Index_node *it = idx->array[index_key];
+                Index_node *ant = NULL;
+                while (it && (strcmp(it->key, key) != 0))
+                {
+                    ant = it;
+                    it = it->collisions;
+                }
+                if (!it)
+                {
+                    //elemento ainda nao existe na lista
+                    ant->collisions = (Index_node *)malloc(sizeof(Index_node));
+                    ant->collisions->key = (char *)malloc(sizeof(char) * strlen(key));
+                    strcpy(ant->collisions->key, key);
+                    ant->collisions->occurrences_list = NULL;
+                    ant->collisions->collisions = NULL;
+                    ant->collisions->num_ocorrences = 0;
+                }
+            }
         }
+        if (index_addtext(idx->text_file, &idx, true) == false)
+            return false;
+        return true;
     }
     return false;
 }
@@ -273,19 +347,24 @@ int index_print(const Index *idx)
     {
         for (unsigned int i = 0; i < M; i++)
         {
-            if (idx->array[i])
+            Index_node *it = idx->array[i];
+            while (it)
             {
-                printf("%s: ", idx->array[i]->key);
-                Occurrences *it = idx->array[i]->occurrences_list;
-                while (it && it->next)
+                printf("%s: ", it->key);
+                Occurrences *it2 = it->occurrences_list;
+                if (it2)
                 {
-                    printf("%d, ", it->line);
-                    it = it->next;
+
+                    while (it2->next)
+                    {
+                        printf("%d, ", it2->line);
+                        it2 = it2->next;
+                    }
+                    if (it2)
+                        printf("%d\n", it2->line);
                 }
-                if (it)
-                    printf("%d\n", it->line);
-                else
-                    printf("\n");
+                printf("\n");
+                it = it->collisions;
             }
         }
         return true;
