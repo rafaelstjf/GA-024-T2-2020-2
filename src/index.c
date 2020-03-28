@@ -296,6 +296,7 @@ int index_createfrom(const char *key_file, const char *text_file, Index **idx)
 {
     (*idx) = (Index *)malloc(sizeof(Index));
     (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
+    (*idx)->num_keys = 0;
     strcpy((*idx)->text_file, text_file);
     (*idx)->array = malloc(M * sizeof(Index_node *));
     for (unsigned int i = 0; i < M; i++)
@@ -385,10 +386,32 @@ int index_print(const Index *idx)
 {
     if (idx)
     {
-        for (unsigned int i = 0; i < M; i++)
+        char **array;
+        array = malloc(idx->num_keys * sizeof(char *));
+        unsigned int i = 0;
+        unsigned int j = 0;
+        while (i < idx->num_keys)
         {
-            Index_node *it = idx->array[i];
+            Index_node *it = idx->array[j];
             while (it)
+            {
+                array[i] = NULL;
+                array[i] = (char*)malloc(strlen(it->key)* sizeof(char));
+                strcpy(array[i], it->key);
+                i++;
+                it = it->collisions;
+            }
+            j++;
+        }
+        for (unsigned int i = 0; i < idx->num_keys; i++)
+        {
+
+            Index_node *it = idx->array[index_hashing_funct(array[i])];
+            while (strcmp(it->key, array[i]) != 0)
+            {
+                it = it->collisions;
+            }
+            if (it)
             {
                 fprintf(stdout, "%s: ", it->key);
                 Occurrences *it2 = it->occurrences_list;
@@ -401,7 +424,7 @@ int index_print(const Index *idx)
                         it2 = it2->next;
                     }
                     if (it2)
-                        fprintf(stdout, "%d\n", it2->line);
+                        fprintf(stdout, "%d", it2->line);
                 }
                 fprintf(stdout, "\n");
                 it = it->collisions;
