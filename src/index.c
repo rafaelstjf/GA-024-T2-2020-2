@@ -386,23 +386,38 @@ int index_print(const Index *idx)
 {
     if (idx)
     {
+        //copy
         char **array;
         array = malloc(idx->num_keys * sizeof(char *));
-        unsigned int i = 0;
-        unsigned int j = 0;
-        while (i < idx->num_keys)
+        unsigned int ind = 0;
+        unsigned int j_ind = 0;
+        while (ind < idx->num_keys)
         {
-            Index_node *it = idx->array[j];
+            Index_node *it = idx->array[j_ind];
             while (it)
             {
-                array[i] = NULL;
-                array[i] = (char*)malloc(strlen(it->key)* sizeof(char));
-                strcpy(array[i], it->key);
-                i++;
+                array[ind] = NULL;
+                array[ind] = (char*)malloc(strlen(it->key)* sizeof(char));
+                strcpy(array[ind], it->key);
+                ind++;
                 it = it->collisions;
             }
-            j++;
+            j_ind++;
         }
+        //sort using bubblesort
+        char* temp = NULL;
+        for(unsigned int i = 0; i < idx->num_keys-1; i++){
+            for(unsigned int j = i + 1; j < idx->num_keys; j++){
+                if(strcmp(array[i], array[j])>0){
+                    if(temp) free(temp);
+                    temp = (char*) malloc(sizeof(char)* strlen(array[i]));
+                    strcpy(temp, array[i]);
+                    strcpy(array[i], array[j]);
+                    strcpy(array[j], temp);
+                }
+            }
+        }
+        //print
         for (unsigned int i = 0; i < idx->num_keys; i++)
         {
 
@@ -430,6 +445,10 @@ int index_print(const Index *idx)
                 it = it->collisions;
             }
         }
+        for(unsigned int i = 0; i < idx->num_keys; i++){
+            if(array[i]) free(array[i]);
+        }
+        free(array);
         return true;
     }
     else
