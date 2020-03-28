@@ -17,7 +17,7 @@ int main(int argc, char **argv)
         return 1;
     }
     char keyword[17];
-    /*printf("Qual a palavra-chave a procurar?\n");
+    printf("Qual a palavra-chave a procurar?\n");
     scanf(" %16[^\n]", keyword);
     int *occurrences;
     int n_occurrences;
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
                 printf("%d, ", occurrences[i]);
             printf("%d\n", occurrences[n_occurrences - 1]);
         }
-    }*/
+    }
     printf("Indice completo:\n");
     if (index_print(idx))
     {

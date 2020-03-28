@@ -9,16 +9,28 @@ typedef struct occurrences
 } Occurrences;
 typedef struct index_node
 {
-    char *key; //palavra-chave
-    int num_ocorrences;
-    Occurrences *occurrences_list; //ocorrencias
-    struct index_node *collisions; //colisoes
+    char *key;                     //keyword
+    int num_occurrences;           //number of occurrences
+    Occurrences *occurrences_list; //pointer for a list of occurrences
+    struct index_node *collisions; //pointer for a list of collisions
 } Index_node;
 struct index
 {
-    char *text_file; //nome do arquivo de texto
+    char *text_file; //name of the text file
     Index_node **array;
+    int num_keys;
 };
+/*
+ * Function: substring
+ * ----------------------------
+ *   Returns the substring of a sequence of characters
+ *
+ *   source: sequence of characters
+ *   beg: index where the substring begins
+ *   end: index where the substring ends
+ *
+ *   returns: the substring of the sequence of characters
+ */
 static char *substring(char *source, int beg, int end)
 {
     char *sub = (char *)malloc(sizeof(char) * (end - beg + 1));
@@ -31,10 +43,20 @@ static char *substring(char *source, int beg, int end)
     sub[j] = '\0';
     return sub;
 }
+/*
+ * Function: replace_char
+ * ----------------------------
+ *   Search for a character in a sequence and then replaces all the occurrences of it
+ *   Source: https://stackoverflow.com/questions/28637882/c-replace-one-character-in-an-char-array-by-another
+ * 
+ *   input: sequence of characters
+ *   find: character to be found in the string
+ *   replace: character to replace the "find" character
+ *
+ *   returns: the new sequence of characters
+ */
 static char *replace_char(char *input, char find, char replace)
 {
-    /*funcao para trocar um caractere. 
-Fonte: https://stackoverflow.com/questions/28637882/c-replace-one-character-in-an-char-array-by-another */
 
     char *output = (char *)malloc(strlen(input));
 
@@ -50,19 +72,25 @@ Fonte: https://stackoverflow.com/questions/28637882/c-replace-one-character-in-a
 
     return output;
 }
-
+/*
+ * Function: index_hashing_funct
+ * ----------------------------
+ *   Computes the index of the hash table using a key
+ *
+ *   key: sequence of characters
+ *
+ *   returns: the index of the key in the table
+ */
 static int index_hashing_funct(const char *key)
 {
     if (key)
     {
-        //depois eu penso em uma funcao maneira
         int result = 0;
         int off = 0;
         int i = 0;
-        int factor = 4;
         while (key[i] != '\0')
         {
-            result = factor * result + key[i];
+            result += (i + 1) * key[i];
             i++;
         }
         return (result % M);
@@ -70,8 +98,15 @@ static int index_hashing_funct(const char *key)
     else
         return -1;
 }
-/**
- * Opens a file and saves its contents in a char*
+/*
+ * Function: index_readfile
+ * ----------------------------
+ *   Opens a file and saves its contents in a string
+ *
+ *   strstream: string where the contents will be saved
+ *   file_name: string containing the file's name
+ *
+ *   returns: an integer signaling if the operation was successfull or not
  */
 
 static int index_readfile(char **strstream, const char *file_name)
@@ -86,7 +121,6 @@ static int index_readfile(char **strstream, const char *file_name)
     }
     else
     {
-        printf("to aqui\n");
         *strstream = calloc(1, 1); //aloca e inicia tudo com 0
         char buffer[buffer_size];
         while (fgets(buffer, buffer_size, input)) // read from stdin
@@ -99,10 +133,19 @@ static int index_readfile(char **strstream, const char *file_name)
             strcat((*strstream), buffer);
         }
         fclose(input);
-        printf("Texto:\n%s\n", *strstream);
         return true;
     }
 }
+/*
+ * Function: index_addkeys
+ * ----------------------------
+ *   Adds the keyswords from a file to the table
+ *
+ *   idx: pointer of the Hash table structure
+ *   key_file: string containing the file's name
+ *
+ *   returns: an integer signaling if the operation was successfull or not
+ */
 static int index_addkeys(const char *key_file, Index **idx)
 {
     char *search = "\n";
@@ -110,28 +153,26 @@ static int index_addkeys(const char *key_file, Index **idx)
     char *strstream;
     if (index_readfile(&strstream, key_file) == false)
         return false;
-    printf("CHAVES: \n%s\n", strstream);
     token = strtok(strstream, search);
-    if (!token || !(*idx))
+    if (!token || !idx)
         return false;
     while (token)
     {
         int index = index_hashing_funct(token);
-        printf("Token: %s \tIndice: %d\n", token, index);
         if (index >= 0)
         {
             if (!(*idx)->array[index])
             {
-                printf("criando no\n");
                 (*idx)->array[index] = (Index_node *)malloc(sizeof(Index_node));
                 (*idx)->array[index]->key = token;
                 (*idx)->array[index]->occurrences_list = NULL;
                 (*idx)->array[index]->collisions = NULL;
-                (*idx)->array[index]->num_ocorrences = 0;
+                (*idx)->array[index]->num_occurrences = 0;
+                (*idx)->num_keys++;
             }
             else
             {
-                //cria colisao
+                //creates a collision
                 Index_node *it = (*idx)->array[index];
                 Index_node *ant = NULL;
                 while (it && (strcmp(it->key, token) != 0))
@@ -141,12 +182,12 @@ static int index_addkeys(const char *key_file, Index **idx)
                 }
                 if (!it)
                 {
-                    //elemento ainda nao existe na lista
                     ant->collisions = (Index_node *)malloc(sizeof(Index_node));
                     ant->collisions->key = token;
                     ant->collisions->occurrences_list = NULL;
                     ant->collisions->collisions = NULL;
-                    ant->collisions->num_ocorrences = 0;
+                    ant->collisions->num_occurrences = 0;
+                    (*idx)->num_keys++;
                 }
             }
         }
@@ -154,6 +195,16 @@ static int index_addkeys(const char *key_file, Index **idx)
     }
     return true;
 }
+/*
+ * Function: index_addkeys
+ * ----------------------------
+ *   Adds the occurrences of the keywords from a file to the table
+ *
+ *   idx: pointer of the Hash table structure
+ *   text_file: string containing the file's name
+ *
+ *   returns: an integer signaling if the operation was successfull or not
+ */
 static int index_addtext(const char *text_file, Index **idx, int clean)
 {
     if (!idx)
@@ -184,7 +235,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     int beg;
     if (index_readfile(&strstream, text_file) == false)
         return false;
-    token = strtok(strstream, search); //divide tudo em linhas;
+    token = strtok(strstream, search); //split everything in lines
     if (!token)
         return false;
     int line = 1;
@@ -204,54 +255,40 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             else
                 sub = substring(token, beg, token_space - token);
             beg = token_space - token + 1;
-            //int token_len = strlen(tk);
             int index = index_hashing_funct(sub);
-            printf("Token-2: %s\tIndice: %d\n", sub, index);
             if (index >= 0 && (*idx)->array[index] != NULL)
             {
                 Index_node *it = (*idx)->array[index];
                 while (it && strcmp(it->key, sub) != 0)
-                {
                     it = it->collisions;
-                }
                 if (it)
                 {
                     if (!it->occurrences_list)
                     {
-                        printf("to na delicinha da chave: %s\n", sub);
-
                         it->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
                         it->occurrences_list->line = line;
                         it->occurrences_list->next = NULL;
-                        it->num_ocorrences++;
                     }
                     else
                     {
-                        printf("to na desgraca da chave: %s\n", sub);
                         Occurrences *it_o = it->occurrences_list;
                         while (it_o->next)
-                        {
                             it_o = it_o->next;
-                            printf("to em um loop infinito demoniaco\n");
-                        }
                         Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
                         c->line = line;
                         c->next = NULL;
                         it_o->next = c;
-                        it->num_ocorrences++;
                     }
+                    it->num_occurrences++;
                 }
             }
             if (token_space)
                 token_space = strchr(token_space + 1, ' ');
             free(sub);
         }
-        //if ((token[token_len - 1] >= 33 && token[token_len - 1] <= 47) || (token[token_len - 1] >= 58 && token[token_len - 1] <= 64))
-        //  token[token_len - 1] = '\0';
         token = strtok(NULL, search);
         line++;
     }
-    free(token);
     free(strstream);
     return true;
 }
@@ -260,11 +297,9 @@ int index_createfrom(const char *key_file, const char *text_file, Index **idx)
     (*idx) = (Index *)malloc(sizeof(Index));
     (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
     strcpy((*idx)->text_file, text_file);
-    (*idx)->array = malloc(M * sizeof(Index_node *)); //alocacao dinamica de um array de ponteiros de index_node
+    (*idx)->array = malloc(M * sizeof(Index_node *));
     for (unsigned int i = 0; i < M; i++)
-    {
         (*idx)->array[i] = NULL;
-    }
     if (index_addkeys(key_file, idx) == false)
         return false;
     if (index_addtext(text_file, idx, false) == false)
@@ -277,18 +312,22 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
     if (idx)
     {
         int index = index_hashing_funct(key);
-        if (idx->array[index])
+        Index_node *it_col = idx->array[index];
+        while (it_col && strcmp(it_col->key, key) != 0)
+            it_col = it_col->collisions;
+        if (it_col)
         {
-            num_occurrences = &(idx->array[index]->num_ocorrences); //talvez esteja errado
+            *num_occurrences = (it_col->num_occurrences);
             if (!occurrences)
                 free(occurrences);
-            (*occurrences) = malloc(sizeof(int) * idx->array[index]->num_ocorrences);
-            Occurrences *it = idx->array[index]->occurrences_list;
+            (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
+            Occurrences *it = it_col->occurrences_list;
             unsigned int i = 0;
             while (it)
             {
                 (*occurrences)[i] = it->line;
                 it = it->next;
+                i++;
             }
             return true;
         }
@@ -305,13 +344,13 @@ int index_put(Index *idx, const char *key)
         {
             if (!idx->array[index_key])
             {
-                printf("criando no\n");
                 idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
                 idx->array[index_key]->key = (char *)malloc(sizeof(char) * strlen(key));
                 strcpy(idx->array[index_key]->key, key);
                 idx->array[index_key]->occurrences_list = NULL;
                 idx->array[index_key]->collisions = NULL;
-                idx->array[index_key]->num_ocorrences = 0;
+                idx->array[index_key]->num_occurrences = 0;
+                idx->num_keys++;
             }
             else
             {
@@ -331,7 +370,8 @@ int index_put(Index *idx, const char *key)
                     strcpy(ant->collisions->key, key);
                     ant->collisions->occurrences_list = NULL;
                     ant->collisions->collisions = NULL;
-                    ant->collisions->num_ocorrences = 0;
+                    ant->collisions->num_occurrences = 0;
+                    idx->num_keys++;
                 }
             }
         }
@@ -350,20 +390,20 @@ int index_print(const Index *idx)
             Index_node *it = idx->array[i];
             while (it)
             {
-                printf("%s: ", it->key);
+                fprintf(stdout, "%s: ", it->key);
                 Occurrences *it2 = it->occurrences_list;
                 if (it2)
                 {
 
                     while (it2->next)
                     {
-                        printf("%d, ", it2->line);
+                        fprintf(stdout, "%d, ", it2->line);
                         it2 = it2->next;
                     }
                     if (it2)
-                        printf("%d\n", it2->line);
+                        fprintf(stdout, "%d\n", it2->line);
                 }
-                printf("\n");
+                fprintf(stdout, "\n");
                 it = it->collisions;
             }
         }
