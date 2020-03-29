@@ -83,35 +83,6 @@ static char *substring(char *source, int beg, int end)
     return sub;
 }
 /*
- * Function: replace_char
- * ----------------------------
- *   Search for a character in a sequence and then replaces all the occurrences of it
- *   Source: https://stackoverflow.com/questions/28637882/c-replace-one-character-in-an-char-array-by-another
- * 
- *   input: sequence of characters
- *   find: character to be found in the string
- *   replace: character to replace the "find" character
- *
- *   returns: the new sequence of characters
- */
-static char *replace_char(char *input, char find, char replace)
-{
-
-    char *output = (char *)malloc(strlen(input));
-
-    for (int i = 0; i < strlen(input); i++)
-    {
-        if (input[i] == find)
-            output[i] = replace;
-        else
-            output[i] = input[i];
-    }
-
-    output[strlen(input)] = '\0';
-
-    return output;
-}
-/*
  * Function: index_hashing_funct
  * ----------------------------
  *   Computes the index of the hash table using a key
