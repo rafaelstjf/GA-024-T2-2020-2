@@ -21,6 +21,45 @@ struct index
     int num_keys;
 };
 /*
+ * Function: remove_specchar
+ * ----------------------------
+ *   Removes all the special characters of a string
+ *
+ *   sequence: sequence of characters
+ *
+ *   returns: nothing
+ */
+static void remove_specchar(char *sequence)
+{
+    if (sequence)
+    {
+        int it = strlen((sequence)) - 1;
+        for (unsigned int i = it; i >= 0; i--)
+        {
+            if ((int)sequence[i] < 48)
+                sequence[i] = '\0';
+            else if ((int)sequence[i] > 57)
+            {
+                if ((int)sequence[i] < 65)
+                    sequence[i] = '\0';
+                else if ((int)sequence[i] > 90)
+                {
+                    if ((int)sequence[i] < 97)
+                        sequence[i] = '\0';
+                    else if ((int)sequence[i] > 122)
+                        sequence[i] = '\0';
+                    else
+                        break;
+                }
+                else
+                    break;
+            }
+            else
+                break;
+        }
+    }
+}
+/*
  * Function: substring
  * ----------------------------
  *   Returns the substring of a sequence of characters
@@ -154,6 +193,7 @@ static int index_addkeys(const char *key_file, Index **idx)
     if (index_readfile(&strstream, key_file) == false)
         return false;
     token = strtok(strstream, search);
+    remove_specchar(token);
     if (!token || !idx)
         return false;
     while (token)
@@ -255,6 +295,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             else
                 sub = substring(token, beg, token_space - token);
             beg = token_space - token + 1;
+            remove_specchar(sub);
             int index = index_hashing_funct(sub);
             if (index >= 0 && (*idx)->array[index] != NULL)
             {
@@ -382,13 +423,40 @@ int index_put(Index *idx, const char *key)
     }
     return false;
 }
+static int split(char **array, int beg, int end)
+{
+    char *c = array[end]; // pivô
+    int j = beg;
+    char *t;
+    for (int k = beg; k < end; ++k)
+        if (strcmp(array[k], c) < 0)
+        {
+            t = array[j];
+            array[j] = array[k];
+            array[k] = t;
+            ++j;
+        }
+    t = array[j];
+    array[j] = array[end];
+    array[end] = t;
+    return j;
+}
+static void quicksort(char **array, int beg, int end)
+{
+    if (beg < end)
+    {
+        int med = split(array, beg, end);
+        quicksort(array, beg, med - 1);
+        quicksort(array, med + 1, end);
+    }
+}
 int index_print(const Index *idx)
 {
     if (idx)
     {
         //copy
         char **array;
-        array = malloc(idx->num_keys * sizeof(char *));
+        array = (char **)malloc(idx->num_keys * sizeof(char *));
         unsigned int ind = 0;
         unsigned int j_ind = 0;
         while (ind < idx->num_keys)
@@ -397,7 +465,7 @@ int index_print(const Index *idx)
             while (it)
             {
                 array[ind] = NULL;
-                array[ind] = (char*)malloc(strlen(it->key)* sizeof(char));
+                array[ind] = (char *)malloc(strlen(it->key) * sizeof(char));
                 strcpy(array[ind], it->key);
                 ind++;
                 it = it->collisions;
@@ -405,18 +473,25 @@ int index_print(const Index *idx)
             j_ind++;
         }
         //sort using bubblesort
-        char* temp = NULL;
-        for(unsigned int i = 0; i < idx->num_keys-1; i++){
-            for(unsigned int j = i + 1; j < idx->num_keys; j++){
-                if(strcmp(array[i], array[j])>0){
-                    if(temp) free(temp);
-                    temp = (char*) malloc(sizeof(char)* strlen(array[i]));
+        /*
+        char *temp = NULL;
+        for (unsigned int i = 0; i < idx->num_keys - 1; i++)
+        {
+            for (unsigned int j = i + 1; j < idx->num_keys; j++)
+            {
+                if (strcmp(array[i], array[j]) > 0)
+                {
+                    if (temp)
+                        free(temp);
+                    temp = (char *)malloc(sizeof(char) * strlen(array[i]));
                     strcpy(temp, array[i]);
                     strcpy(array[i], array[j]);
                     strcpy(array[j], temp);
                 }
             }
-        }
+        }*/
+        //sort
+        quicksort(array, 0, idx->num_keys - 1);
         //print
         for (unsigned int i = 0; i < idx->num_keys; i++)
         {
@@ -445,8 +520,10 @@ int index_print(const Index *idx)
                 it = it->collisions;
             }
         }
-        for(unsigned int i = 0; i < idx->num_keys; i++){
-            if(array[i]) free(array[i]);
+        for (unsigned int i = 0; i < idx->num_keys; i++)
+        {
+            if (array + i)
+                free(array + i);
         }
         free(array);
         return true;
@@ -460,6 +537,32 @@ int index_destroy_hash(Index **idx)
         return true;
     else
     {
+        for (unsigned int i = 0; i < M; i++)
+        {
+            if ((*idx)->array[i])
+            {
+                Index_node *it = (*idx)->array[i];
+                Index_node *temp = NULL;
+                while (it)
+                {
+                    if (it->occurrences_list)
+                    {
+                        Occurrences *it_o = it->occurrences_list;
+                        Occurrences *temp_o = NULL;
+                        while (it_o)
+                        {
+                            temp_o = it_o;
+                            it_o = it_o->next;
+                            free(temp);
+                        }
+                    }
+                    temp = it;
+                    it = it->collisions;
+                    free(temp);
+                }
+            }
+        }
         //destroy
+        return true;
     }
 }

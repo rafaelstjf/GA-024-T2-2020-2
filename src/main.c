@@ -56,5 +56,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "Erro: impressao do novo indice\n");
         return 1;
     }
+    index_destroy_hash(&idx);
     return 0;
 }

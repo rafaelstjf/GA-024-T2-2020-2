@@ -32,5 +32,9 @@ int index_put(Index *idx, const char *key);
  */
 int index_print(const Index *idx);
 
+/**
+ * destrutor
+*/
+int index_destroy_hash(Index **idx);
 
 #endif
