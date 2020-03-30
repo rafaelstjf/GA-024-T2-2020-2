@@ -1,7 +1,7 @@
 #include "index.h"
 static const int false = 1;
 static const int true = 0;
-#define M 128
+#define M 1024
 typedef struct occurrences
 {
     int line;
@@ -491,10 +491,11 @@ int index_print(const Index *idx)
                 it = it->collisions;
             }
         }
+        /* invalid pointer error*/
         for (unsigned int i = 0; i < idx->num_keys; i++)
         {
-            if (array + i)
-                free(array + i);
+            if (array[i])
+                free(array[i]);
         }
         free(array);
         return true;
@@ -524,7 +525,7 @@ int index_destroy_hash(Index **idx)
                         {
                             temp_o = it_o;
                             it_o = it_o->next;
-                            free(temp);
+                            free(temp_o);
                         }
                     }
                     temp = it;
