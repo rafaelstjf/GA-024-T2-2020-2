@@ -1,7 +1,7 @@
 #include "index.h"
 static const int false = 1;
 static const int true = 0;
-#define M 1024
+#define FACTOR 64
 typedef struct occurrences
 {
     int line;
@@ -19,6 +19,7 @@ struct index
     char *text_file; //name of the text file
     Index_node **array;
     int num_keys;
+    int table_size;
 };
 /*
  * Function: remove_specchar
@@ -88,10 +89,11 @@ static char *substring(char *source, int beg, int end)
  *   Computes the index of the hash table using a key
  *
  *   key: sequence of characters
+ *   size: size of the table
  *
  *   returns: the index of the key in the table
  */
-static int index_hashing_funct(const char *key)
+static int index_hashing_funct(const char *key, int size)
 {
     if (key)
     {
@@ -103,7 +105,7 @@ static int index_hashing_funct(const char *key)
             result += (i + 1) * key[i];
             i++;
         }
-        return (result % M);
+        return (result % size);
     }
     else
         return -1;
@@ -169,7 +171,7 @@ static int index_addkeys(const char *key_file, Index **idx)
         return false;
     while (token)
     {
-        int index = index_hashing_funct(token);
+        int index = index_hashing_funct(token, (*idx)->table_size);
         if (index >= 0)
         {
             if (!(*idx)->array[index])
@@ -222,7 +224,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
         return false;
     if (clean == true)
     {
-        for (unsigned int i = 0; i < M; i++)
+        for (unsigned int i = 0; i < (*idx)->table_size; i++)
         {
             Index_node *it = (*idx)->array[i];
             while (it)
@@ -267,7 +269,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
                 sub = substring(token, beg, token_space - token);
             beg = token_space - token + 1;
             remove_specchar(sub);
-            int index = index_hashing_funct(sub);
+            int index = index_hashing_funct(sub, (*idx)->table_size);
             if (index >= 0 && (*idx)->array[index] != NULL)
             {
                 Index_node *it = (*idx)->array[index];
@@ -304,14 +306,31 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     free(strstream);
     return true;
 }
+static int index_getsize(const char *key_file)
+{
+    int size = 0;
+    char *search = "\n";
+    char *token;
+    char *strstream;
+    if (index_readfile(&strstream, key_file) == false)
+        return false;
+    token = strtok(strstream, search);
+    while (token)
+    {
+        size++;
+        token = strtok(NULL, search);
+    }
+    return size + FACTOR;
+}
 int index_createfrom(const char *key_file, const char *text_file, Index **idx)
 {
     (*idx) = (Index *)malloc(sizeof(Index));
     (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
     (*idx)->num_keys = 0;
     strcpy((*idx)->text_file, text_file);
-    (*idx)->array = malloc(M * sizeof(Index_node *));
-    for (unsigned int i = 0; i < M; i++)
+    (*idx)->table_size = index_getsize(key_file);
+    (*idx)->array = malloc((*idx)->table_size * sizeof(Index_node *));
+    for (unsigned int i = 0; i < (*idx)->table_size; i++)
         (*idx)->array[i] = NULL;
     if (index_addkeys(key_file, idx) == false)
         return false;
@@ -324,7 +343,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
 {
     if (idx)
     {
-        int index = index_hashing_funct(key);
+        int index = index_hashing_funct(key, idx->table_size);
         Index_node *it_col = idx->array[index];
         while (it_col && strcmp(it_col->key, key) != 0)
             it_col = it_col->collisions;
@@ -352,7 +371,7 @@ int index_put(Index *idx, const char *key)
     if (idx)
     {
         //limpa as ocorrencias da tabela
-        int index_key = index_hashing_funct(key);
+        int index_key = index_hashing_funct(key, idx->table_size);
         if (index_key >= 0)
         {
             if (!idx->array[index_key])
@@ -467,7 +486,7 @@ int index_print(const Index *idx)
         for (unsigned int i = 0; i < idx->num_keys; i++)
         {
 
-            Index_node *it = idx->array[index_hashing_funct(array[i])];
+            Index_node *it = idx->array[index_hashing_funct(array[i], idx->table_size)];
             while (strcmp(it->key, array[i]) != 0)
             {
                 it = it->collisions;
@@ -509,7 +528,7 @@ int index_destroy_hash(Index **idx)
         return true;
     else
     {
-        for (unsigned int i = 0; i < M; i++)
+        for (unsigned int i = 0; i < (*idx)->table_size; i++)
         {
             if ((*idx)->array[i])
             {
