@@ -306,6 +306,15 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     free(strstream);
     return true;
 }
+/*
+ * Function: index_getsize
+ * ----------------------------
+ *   Gets the number of keys
+ *
+ *   key_file: string containing the key file's name
+ *
+ *   returns: the number of keys plus the factor
+ */
 static int index_getsize(const char *key_file)
 {
     int size = 0;
@@ -368,17 +377,25 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
 }
 int index_put(Index *idx, const char *key)
 {
+
     if (idx)
     {
-        //limpa as ocorrencias da tabela
-        int index_key = index_hashing_funct(key, idx->table_size);
+        char *n_key = malloc(sizeof(char) * strlen(key) + 1);
+        strcpy(n_key, key);
+        char* space = strchr(n_key, 32);
+        if(space){
+            *space = '\0';
+        }
+        remove_specchar(n_key);
+        //remove all the occurrences of the table
+        int index_key = index_hashing_funct(n_key, idx->table_size);
         if (index_key >= 0)
         {
             if (!idx->array[index_key])
             {
                 idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
-                idx->array[index_key]->key = (char *)malloc(sizeof(char) * strlen(key));
-                strcpy(idx->array[index_key]->key, key);
+                idx->array[index_key]->key = (char *)malloc(sizeof(char) * strlen(n_key));
+                strcpy(idx->array[index_key]->key, n_key);
                 idx->array[index_key]->occurrences_list = NULL;
                 idx->array[index_key]->collisions = NULL;
                 idx->array[index_key]->num_occurrences = 0;
@@ -386,20 +403,20 @@ int index_put(Index *idx, const char *key)
             }
             else
             {
-                //cria colisao
+                //creates a collision
                 Index_node *it = idx->array[index_key];
                 Index_node *ant = NULL;
-                while (it && (strcmp(it->key, key) != 0))
+                while (it && (strcmp(it->key, n_key) != 0))
                 {
                     ant = it;
                     it = it->collisions;
                 }
                 if (!it)
                 {
-                    //elemento ainda nao existe na lista
+                    //element doesn't exist yet
                     ant->collisions = (Index_node *)malloc(sizeof(Index_node));
-                    ant->collisions->key = (char *)malloc(sizeof(char) * strlen(key));
-                    strcpy(ant->collisions->key, key);
+                    ant->collisions->key = (char *)malloc(sizeof(char) * strlen(n_key));
+                    strcpy(ant->collisions->key, n_key);
                     ant->collisions->occurrences_list = NULL;
                     ant->collisions->collisions = NULL;
                     ant->collisions->num_occurrences = 0;
@@ -407,23 +424,37 @@ int index_put(Index *idx, const char *key)
                 }
             }
         }
+        free(n_key);
         if (index_addtext(idx->text_file, &idx, true) == false)
             return false;
         return true;
     }
     return false;
 }
+/*
+ * Function: split
+ * ----------------------------
+ *   Function that helps the quicksort function finding the pivot and ordering the array
+ *
+ *   array: pointer of char pointers
+ *
+ *   returns: the pivot index
+ */
 static int split(char **array, int beg, int end)
 {
-    char *c = array[end]; // pivô
+    char *c = array[end]; // pivot
     int j = beg;
     char *t;
     for (int k = beg; k < end; ++k)
         if (strcmp(array[k], c) < 0)
         {
-            t = array[j];
-            array[j] = array[k];
-            array[k] = t;
+            if (j != k)
+            {
+
+                t = array[j];
+                array[j] = array[k];
+                array[k] = t;
+            }
             ++j;
         }
     t = array[j];
@@ -431,6 +462,17 @@ static int split(char **array, int beg, int end)
     array[end] = t;
     return j;
 }
+
+/*
+ * Function: quicksort
+ * ----------------------------
+ *   Function that orders an array of characters
+ *
+ *   array: pointer of char pointers
+ *   beg: index of the beginning of the array
+ *   end: index of the end of the array
+ *   
+ */
 static void quicksort(char **array, int beg, int end)
 {
     if (beg < end)
@@ -514,7 +556,10 @@ int index_print(const Index *idx)
         for (unsigned int i = 0; i < idx->num_keys; i++)
         {
             if (array[i])
+            {
                 free(array[i]);
+                array[i] = NULL;
+            }
         }
         free(array);
         return true;
