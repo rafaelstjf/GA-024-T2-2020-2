@@ -230,13 +230,14 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             while (it)
             {
                 Occurrences *ant = NULL, *it_o = it->occurrences_list;
+                it->occurrences_list = NULL;
                 while (it_o)
                 {
                     ant = it_o;
                     it_o = it_o->next;
-                    //free(ant);
                     ant = NULL;
                 }
+                
                 it = it->collisions;
             }
         }
@@ -382,8 +383,9 @@ int index_put(Index *idx, const char *key)
     {
         char *n_key = malloc(sizeof(char) * strlen(key) + 1);
         strcpy(n_key, key);
-        char* space = strchr(n_key, 32);
-        if(space){
+        char *space = strchr(n_key, 32);
+        if (space)
+        {
             *space = '\0';
         }
         remove_specchar(n_key);
