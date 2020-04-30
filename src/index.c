@@ -261,32 +261,36 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     {
         if (*it == ' ' || *it == '\n')
         {
-            remove_specchar(buffer);
-            int index = index_hashing_funct(buffer, (*idx)->table_size);
-            if (index >= 0 && (*idx)->array[index] != NULL)
+            if (strcmp(buffer, "") != 0)
             {
-                Index_node *it = (*idx)->array[index];
-                while (it && strcmp(it->key, buffer) != 0)
-                    it = it->collisions;
-                if (it)
+
+                remove_specchar(buffer);
+                int index = index_hashing_funct(buffer, (*idx)->table_size);
+                if (index >= 0 && (*idx)->array[index] != NULL)
                 {
-                    if (!it->occurrences_list)
+                    Index_node *it = (*idx)->array[index];
+                    while (it && strcmp(it->key, buffer) != 0)
+                        it = it->collisions;
+                    if (it)
                     {
-                        it->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
-                        it->occurrences_list->line = line;
-                        it->occurrences_list->next = NULL;
+                        if (!it->occurrences_list)
+                        {
+                            it->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
+                            it->occurrences_list->line = line;
+                            it->occurrences_list->next = NULL;
+                        }
+                        else
+                        {
+                            Occurrences *it_o = it->occurrences_list;
+                            while (it_o->next)
+                                it_o = it_o->next;
+                            Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
+                            c->line = line;
+                            c->next = NULL;
+                            it_o->next = c;
+                        }
+                        it->num_occurrences++;
                     }
-                    else
-                    {
-                        Occurrences *it_o = it->occurrences_list;
-                        while (it_o->next)
-                            it_o = it_o->next;
-                        Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
-                        c->line = line;
-                        c->next = NULL;
-                        it_o->next = c;
-                    }
-                    it->num_occurrences++;
                 }
             }
             //got a word
