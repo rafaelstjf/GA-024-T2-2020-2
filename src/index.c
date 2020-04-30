@@ -300,7 +300,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             if (ind_buffer >= size_buffer)
             {
                 size_buffer += 17;
-                realloc(buffer, size_buffer * sizeof(char));
+                buffer = realloc(buffer, size_buffer * sizeof(char));
                 memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
             }
             buffer[ind_buffer] = *it;
