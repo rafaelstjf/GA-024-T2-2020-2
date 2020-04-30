@@ -334,7 +334,6 @@ static int index_getsize(const char *key_file)
     {
         size++;
         token = strtok(NULL, search);
-        free(token);
     }
     return size + FACTOR;
 }
@@ -366,7 +365,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         if (it_col)
         {
             *num_occurrences = (it_col->num_occurrences);
-            if (occurrences)
+            if (*occurrences)
                 free(occurrences);
             (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
             Occurrences *it = it_col->occurrences_list;
