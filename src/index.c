@@ -247,39 +247,26 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             }
         }
     }
-    char *search = "\n";
+    char *buffer;
     char *strstream;
-    char *token;
-    char *token_space;
-    int beg;
+    int line = 1;
+    buffer = (char *)malloc(sizeof(char) * 17);
+    unsigned size_buffer = strlen(buffer) + 1;
+    memset(buffer, '\0', sizeof(char) * size_buffer);
+    unsigned ind_buffer = 0;
     if (index_readfile(&strstream, text_file) == false)
         return false;
-    token = strtok(strstream, search); //split everything in lines
-    if (!token)
-        return false;
-    int line = 1;
-    while (token)
+    char *it = strstream;
+    while (it && *it != '\0')
     {
-        token_space = strchr(token, ' ');
-        beg = 0;
-        int next_line = false;
-        while (next_line == false)
+        if (*it == ' ' || *it == '\n')
         {
-            char *sub;
-            if (!token_space)
-            {
-                sub = substring(token, beg, strlen(token));
-                next_line = true;
-            }
-            else
-                sub = substring(token, beg, token_space - token);
-            beg = token_space - token + 1;
-            remove_specchar(sub);
-            int index = index_hashing_funct(sub, (*idx)->table_size);
+            remove_specchar(buffer);
+            int index = index_hashing_funct(buffer, (*idx)->table_size);
             if (index >= 0 && (*idx)->array[index] != NULL)
             {
                 Index_node *it = (*idx)->array[index];
-                while (it && strcmp(it->key, sub) != 0)
+                while (it && strcmp(it->key, buffer) != 0)
                     it = it->collisions;
                 if (it)
                 {
@@ -302,12 +289,24 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
                     it->num_occurrences++;
                 }
             }
-            if (token_space)
-                token_space = strchr(token_space + 1, ' ');
-            free(sub);
+            //got a word
+            if (*it == '\n')
+                line++;
+            memset(buffer, '\0', sizeof(char) * size_buffer);
+            ind_buffer = 0;
         }
-        token = strtok(NULL, search);
-        line++;
+        else
+        {
+            if (ind_buffer >= size_buffer)
+            {
+                size_buffer += 17;
+                realloc(buffer, size_buffer * sizeof(char));
+                memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
+            }
+            buffer[ind_buffer] = *it;
+            ind_buffer++;
+        }
+        it++;
     }
     free(strstream);
     return true;
