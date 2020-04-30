@@ -377,7 +377,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         {
             *num_occurrences = (it_col->num_occurrences);
             if (occurrences)
-                (*occurrences) = realloc(occurrences, sizeof(int) * it_col->num_occurrences);
+                (*occurrences) = realloc(*occurrences, sizeof(int) * it_col->num_occurrences);
             else
                 (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
             Occurrences *it = it_col->occurrences_list;
