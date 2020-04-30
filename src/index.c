@@ -251,6 +251,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     char *strstream;
     int line = 1;
     buffer = (char *)malloc(sizeof(char) * 17);
+    if(!buffer) return false;
     unsigned size_buffer = strlen(buffer) + 1;
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
@@ -377,9 +378,8 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         {
             *num_occurrences = (it_col->num_occurrences);
             //maybe there will be a memory leak here
-            if (occurrences){
-                 free(occurrences[0]);   
-                free(occurrences);
+            if (* occurrences){
+                *occurrences = NULL;
             }
             (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
             Occurrences *it = it_col->occurrences_list;
