@@ -171,6 +171,11 @@ static int index_addkeys(const char *key_file, Index **idx)
         return false;
     while (token)
     {
+        //checks if there is more than 1 word per line
+        //if there is it will only consider the first one
+        char *space = strchr(token, 32);
+        if (space)
+            *space = '\0';
         int index = index_hashing_funct(token, (*idx)->table_size);
         if (index >= 0)
         {
@@ -237,7 +242,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
                     it_o = it_o->next;
                     ant = NULL;
                 }
-                
+
                 it = it->collisions;
             }
         }
@@ -329,6 +334,7 @@ static int index_getsize(const char *key_file)
     {
         size++;
         token = strtok(NULL, search);
+        free(token);
     }
     return size + FACTOR;
 }
