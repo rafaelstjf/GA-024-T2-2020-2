@@ -376,10 +376,12 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         if (it_col)
         {
             *num_occurrences = (it_col->num_occurrences);
-            if (occurrences)
-                (*occurrences) = realloc(*occurrences, sizeof(int) * it_col->num_occurrences);
-            else
-                (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
+            //maybe there will be a memory leak here
+            if (occurrences){
+                 free(occurrences[0]);   
+                free(occurrences);
+            }
+            (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
             Occurrences *it = it_col->occurrences_list;
             unsigned int i = 0;
             while (it)
