@@ -166,13 +166,13 @@ static int index_addkeys(const char *key_file, Index **idx)
     if (index_readfile(&strstream, key_file) == false)
         return false;
     token = strtok(strstream, search);
-    remove_specchar(token);
     if (!token || !idx)
         return false;
     while (token)
     {
         //checks if there is more than 1 word per line
         //if there is it will only consider the first one
+        remove_specchar(token);
         char *space = strchr(token, 32);
         if (space)
             *space = '\0';
