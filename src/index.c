@@ -358,9 +358,17 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
 {
     if (idx)
     {
-        int index = index_hashing_funct(key, idx->table_size);
+        char *n_key = malloc(sizeof(char) * strlen(key) + 1);
+        strcpy(n_key, key);
+        char *space = strchr(n_key, 32);
+        if (space)
+        {
+            *space = '\0';
+        }
+        remove_specchar(n_key);
+        int index = index_hashing_funct(n_key, idx->table_size);
         Index_node *it_col = idx->array[index];
-        while (it_col && strcmp(it_col->key, key) != 0)
+        while (it_col && strcmp(it_col->key, n_key) != 0)
             it_col = it_col->collisions;
         if (it_col)
         {
@@ -383,7 +391,6 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
 }
 int index_put(Index *idx, const char *key)
 {
-
     if (idx)
     {
         char *n_key = malloc(sizeof(char) * strlen(key) + 1);
