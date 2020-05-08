@@ -2,6 +2,7 @@
 static const int false = 1;
 static const int true = 0;
 #define FACTOR 64
+#define MAX_CHAR 16
 typedef struct occurrences
 {
     int line;
@@ -21,6 +22,26 @@ struct index
     int num_keys;
     int table_size;
 };
+/*
+ * Function: limit_char
+ * ----------------------------
+ *   Removes all the characters that exceed the MAX_CHAR limit
+ *
+ *   str: sequence of characters
+ *
+ *   returns: nothing
+ */
+static void limit_char(char *str)
+{
+    if (str)
+    {
+        unsigned int s = strlen(str);
+        if (s > MAX_CHAR)
+        {
+            memset(str + MAX_CHAR, '\0', sizeof(char) * (s - MAX_CHAR));
+        }
+    }
+}
 /*
  * Function: remove_specchar
  * ----------------------------
@@ -172,6 +193,7 @@ static int index_addkeys(const char *key_file, Index **idx)
     {
         //checks if there is more than 1 word per line
         //if there is it will only consider the first one
+        limit_char(token);
         remove_specchar(token);
         char *space = strchr(token, 32);
         if (space)
@@ -251,21 +273,26 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     char *strstream;
     int line = 1;
     buffer = (char *)malloc(sizeof(char) * 17);
-    if(!buffer) return false;
+    if (!buffer)
+        return false;
     unsigned size_buffer = strlen(buffer) + 1;
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
     if (index_readfile(&strstream, text_file) == false)
         return false;
     char *it = strstream;
-    while (it && *it != '\0')
+    while ((it && *it != '\0') || (strcmp(buffer, "") != 0))
+    //the text can end but the buffer still has content on it
     {
-        if (*it == ' ' || *it == '\n')
+        if (*it == ' ' || *it == '\n' || *it == '\0')
         {
             if (strcmp(buffer, "") != 0)
             {
 
+                printf("BUFFER ANTES: %s\n", buffer);
+                limit_char(buffer);
                 remove_specchar(buffer);
+                printf("BUFFER DEPOIS: %s\n", buffer);
                 int index = index_hashing_funct(buffer, (*idx)->table_size);
                 if (index >= 0 && (*idx)->array[index] != NULL)
                 {
@@ -369,6 +396,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         {
             *space = '\0';
         }
+        limit_char(n_key);
         remove_specchar(n_key);
         int index = index_hashing_funct(n_key, idx->table_size);
         Index_node *it_col = idx->array[index];
@@ -378,7 +406,8 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         {
             *num_occurrences = (it_col->num_occurrences);
             //maybe there will be a memory leak here
-            if (* occurrences){
+            if (*occurrences)
+            {
                 *occurrences = NULL;
             }
             (*occurrences) = malloc(sizeof(int) * it_col->num_occurrences);
@@ -406,6 +435,7 @@ int index_put(Index *idx, const char *key)
         {
             *space = '\0';
         }
+        limit_char(n_key);
         remove_specchar(n_key);
         //remove all the occurrences of the table
         int index_key = index_hashing_funct(n_key, idx->table_size);
