@@ -4,10 +4,9 @@
 
 ## Sumário 
 ___
-1. Estruturas de dados
-2. Função de *Hashing*
-3. Impressão
-3. Testes
+1. [Estruturas de dados](#estrutura-de-dados)
+2. [Função de *Hashing*](##função-de-hashing)
+3. [Impressão](#impressão)
 
 ## Estruturas de dados
 ___
