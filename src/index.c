@@ -187,8 +187,9 @@ static int index_addkeys(const char *key_file, Index **idx)
     if (index_readfile(&strstream, key_file) == false)
         return false;
     token = strtok(strstream, search);
-    if (!token || !idx)
-        return false;
+    if(!idx) return false;
+    if (!token) //there are no keys in the file
+        return true;
     while (token)
     {
         //checks if there is more than 1 word per line
@@ -289,10 +290,8 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
             if (strcmp(buffer, "") != 0)
             {
 
-                printf("BUFFER ANTES: %s\n", buffer);
                 limit_char(buffer);
                 remove_specchar(buffer);
-                printf("BUFFER DEPOIS: %s\n", buffer);
                 int index = index_hashing_funct(buffer, (*idx)->table_size);
                 if (index >= 0 && (*idx)->array[index] != NULL)
                 {
