@@ -495,7 +495,7 @@ static int split(char **array, int beg, int end)
     int j = beg;
     char *t;
     for (int k = beg; k < end; ++k)
-        if (strcmp(array[k], c) < 0)
+        if (stricmp(array[k], c) < 0)
         {
             if (j != k)
             {
