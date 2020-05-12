@@ -22,6 +22,29 @@ struct index
     int num_keys;
     int table_size;
 };
+/**
+ * Function: strcicmpL
+ * -----------------------------
+ * Compares two strings in a case insensitivy way
+ * Linux doesn't recognize the default stricmp like windows does
+ * Source: https://stackoverflow.com/questions/5820810/case-insensitive-string-comp-in-c
+ * 
+ * a, b: sequence of characters
+ * 
+ * returns: an integer >1 if a>b and <1 if a<b or 0 if the sequences are the same
+ */
+static int strcicmpL(char const *a, char const *b) {
+  while (*a) {
+    int d = tolower(*a) - tolower(*b);
+    if (d) {
+        return d;
+    } 
+    a++;
+    b++;
+  } 
+  return 0;
+}
+
 /*
  * Function: limit_char
  * ----------------------------
@@ -187,7 +210,8 @@ static int index_addkeys(const char *key_file, Index **idx)
     if (index_readfile(&strstream, key_file) == false)
         return false;
     token = strtok(strstream, search);
-    if(!idx) return false;
+    if (!idx)
+        return false;
     if (!token) //there are no keys in the file
         return true;
     while (token)
@@ -495,7 +519,8 @@ static int split(char **array, int beg, int end)
     int j = beg;
     char *t;
     for (int k = beg; k < end; ++k)
-        if (stricmp(array[k], c) < 0)
+    {
+        if (strcicmpL(array[k], c) < 0)
         {
             if (j != k)
             {
@@ -506,6 +531,7 @@ static int split(char **array, int beg, int end)
             }
             ++j;
         }
+    }
     t = array[j];
     array[j] = array[end];
     array[end] = t;

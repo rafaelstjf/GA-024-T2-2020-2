@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+#include <ctype.h>
 typedef struct index Index;
 /**
  * le o arquivo key_file com as palavras chaves a serem usadas, 
