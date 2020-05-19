@@ -211,12 +211,24 @@ static int index_addkeys(const char *key_file, Index **idx)
     char *token;
     char *strstream;
     if (index_readfile(&strstream, key_file) == false)
+    {
+        if (strstream)
+            free(strstream);
         return false;
+    }
     token = strtok(strstream, search);
     if (!idx)
+    {
+        if (strstream)
+            free(strstream);
         return false;
+    }
     if (!token) //there are no keys in the file
+    {
+        if (strstream)
+            free(strstream);
         return true;
+    }
     while (token)
     {
         //checks if there is more than 1 word per line
