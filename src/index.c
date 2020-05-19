@@ -287,7 +287,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
                 {
                     ant = it_o;
                     it_o = it_o->next;
-                    ant = NULL;
+                    free(ant);
                 }
 
                 it = it->collisions;
@@ -363,6 +363,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
         }
         it++;
     }
+    if(buffer) free(buffer);
     free(strstream);
     return true;
 }
@@ -389,6 +390,7 @@ static int index_getsize(const char *key_file)
         size++;
         token = strtok(NULL, search);
     }
+    free(strstream);
     return size + FACTOR;
 }
 int index_createfrom(const char *key_file, const char *text_file, Index **idx)
@@ -412,7 +414,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
 {
     if (idx)
     {
-        char *n_key = malloc(sizeof(char) * strlen(key) + 1);
+        char *n_key = malloc(sizeof(char) * (strlen(key) + 1));
         strcpy(n_key, key);
         char *space = strchr(n_key, 32);
         if (space)
@@ -425,6 +427,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         Index_node *it_col = idx->array[index];
         while (it_col && strcmp(it_col->key, n_key) != 0)
             it_col = it_col->collisions;
+        if(n_key) free(n_key);
         if (it_col)
         {
             *num_occurrences = (it_col->num_occurrences);
@@ -632,7 +635,7 @@ int index_print(const Index *idx)
         {
             if (array[i])
             {
-                array[i] = NULL;
+                free(array[i]);
             }
         }
         free(array);
@@ -668,11 +671,16 @@ int index_destroy_hash(Index **idx)
                     }
                     temp = it;
                     it = it->collisions;
-                    free(temp);
+                    //if(temp->key) free(temp->key);                    free(temp);
                 }
+                //free((*idx)->array[i]);
             }
         }
         //destroy
+        if((*idx)->text_file) free((*idx)->text_file);
+        free((*idx)->array);
+        free(*idx);
+
         return true;
     }
 }
