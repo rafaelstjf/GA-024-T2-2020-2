@@ -33,16 +33,19 @@ struct index
  * 
  * returns: an integer >1 if a>b and <1 if a<b or 0 if the sequences are the same
  */
-static int strcicmpL(char const *a, char const *b) {
-  while (*a) {
-    int d = tolower(*a) - tolower(*b);
-    if (d) {
-        return d;
-    } 
-    a++;
-    b++;
-  } 
-  return 0;
+static int strcicmpL(char const *a, char const *b)
+{
+    while (*a)
+    {
+        int d = tolower(*a) - tolower(*b);
+        if (d)
+        {
+            return d;
+        }
+        a++;
+        b++;
+    }
+    return 0;
 }
 
 /*
@@ -363,7 +366,8 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
         }
         it++;
     }
-    if(buffer) free(buffer);
+    if (buffer)
+        free(buffer);
     free(strstream);
     return true;
 }
@@ -427,7 +431,8 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
         Index_node *it_col = idx->array[index];
         while (it_col && strcmp(it_col->key, n_key) != 0)
             it_col = it_col->collisions;
-        if(n_key) free(n_key);
+        if (n_key)
+            free(n_key);
         if (it_col)
         {
             *num_occurrences = (it_col->num_occurrences);
@@ -671,14 +676,20 @@ int index_destroy_hash(Index **idx)
                     }
                     temp = it;
                     it = it->collisions;
-                    //if(temp->key) free(temp->key);                    free(temp);
+                    if (temp)
+                    {
+                        /*if (temp->key)
+                            free(temp->key);
+                            */
+                        free(temp);
+                    }
                 }
-                //free((*idx)->array[i]);
             }
         }
         //destroy
-        if((*idx)->text_file) free((*idx)->text_file);
         free((*idx)->array);
+        if ((*idx)->text_file)
+            free((*idx)->text_file);
         free(*idx);
 
         return true;
