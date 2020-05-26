@@ -640,7 +640,8 @@ int index_print(const Index *idx)
         {
             if (array[i])
             {
-                free(array[i]);
+                array[i] = NULL;
+                //free(array[i]);
             }
         }
         free(array);
