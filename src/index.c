@@ -631,7 +631,6 @@ int index_print(const Index *idx)
                     if (it2)
                         fprintf(stdout, "%d", it2->line);
                 }
-                else fprintf(stdout, "Nao existem ocorrencias dessa palavra no texto!");
                 fprintf(stdout, "\n");
                 it = it->collisions;
             }
