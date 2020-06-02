@@ -459,6 +459,7 @@ int index_put(Index *idx, const char *key)
 {
     if (idx)
     {
+        Index_node *it_n = NULL;
         char *n_key = malloc(sizeof(char) * strlen(key) + 1);
         strcpy(n_key, key);
         char *space = strchr(n_key, 32);
@@ -485,14 +486,14 @@ int index_put(Index *idx, const char *key)
             else
             {
                 //creates a collision
-                Index_node *it = idx->array[index_key];
+                it_n = idx->array[index_key];
                 Index_node *ant = NULL;
-                while (it && (strcmp(it->key, n_key) != 0))
+                while (it_n && (strcmp(it_n->key, n_key) != 0))
                 {
-                    ant = it;
-                    it = it->collisions;
+                    ant = it_n;
+                    it_n = it_n->collisions;
                 }
-                if (!it)
+                if (!it_n)
                 {
                     //element doesn't exist yet
                     ant->collisions = (Index_node *)malloc(sizeof(Index_node));
@@ -503,11 +504,90 @@ int index_put(Index *idx, const char *key)
                     ant->collisions->num_occurrences = 0;
                     idx->num_keys++;
                 }
+                else
+                {
+                    Occurrences *itc = it_n->occurrences_list;
+                    Occurrences *ant_c = NULL;
+                    it_n->num_occurrences = 0;
+                    while (itc)
+                    {
+                        ant_c = itc;
+                        itc = itc->next;
+                        free(ant_c);
+                        ant_c = NULL;
+                    }
+                    it_n->occurrences_list = NULL;
+                }
             }
         }
-        free(n_key);
-        if (index_addtext(idx->text_file, &idx, true) == false)
+        char *buffer;
+        char *strstream;
+        int line = 1;
+        buffer = (char *)malloc(sizeof(char) * 17);
+        if (!buffer)
             return false;
+        unsigned size_buffer = strlen(buffer) + 1;
+        memset(buffer, '\0', sizeof(char) * size_buffer);
+        unsigned ind_buffer = 0;
+        if (index_readfile(&strstream, idx->text_file) == false)
+            return false;
+        char *it = strstream;
+        while ((it && *it != '\0') || (strcmp(buffer, "") != 0))
+        //the text can end but the buffer still has content on it
+        {
+            if (*it == ' ' || *it == '\n' || *it == '\0')
+            {
+                if (strcmp(buffer, "") != 0)
+                {
+
+                    limit_char(buffer);
+                    remove_specchar(buffer);
+                    int index = index_hashing_funct(buffer, idx->table_size);
+                    if (index == index_key && strcmp(it_n->key, buffer) == 0)
+                    {
+                        if (!it_n->occurrences_list)
+                        {
+                            it_n->occurrences_list = (Occurrences *)malloc(sizeof(Occurrences));
+                            it_n->occurrences_list->line = line;
+                            it_n->occurrences_list->next = NULL;
+                        }
+                        else
+                        {
+                            Occurrences *it_o = it_n->occurrences_list;
+                            while (it_o->next)
+                                it_o = it_o->next;
+                            Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
+                            printf("inserindo na linha %d\n", line);
+                            c->line = line;
+                            c->next = NULL;
+                            it_o->next = c;
+                        }
+                        it_n->num_occurrences++;
+                    }
+                }
+                //got a word
+                if (*it == '\n')
+                    line++;
+                memset(buffer, '\0', sizeof(char) * size_buffer);
+                ind_buffer = 0;
+            }
+            else
+            {
+                if (ind_buffer >= size_buffer)
+                {
+                    size_buffer += 17;
+                    buffer = realloc(buffer, size_buffer * sizeof(char));
+                    memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
+                }
+                buffer[ind_buffer] = *it;
+                ind_buffer++;
+            }
+            it++;
+        }
+        if (buffer)
+            free(buffer);
+        free(strstream);
+        free(n_key);
         return true;
     }
     return false;
