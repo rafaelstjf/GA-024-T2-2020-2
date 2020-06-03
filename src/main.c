@@ -1,5 +1,16 @@
 #include <stdio.h>
 #include "index.h"
+char *create_randomstring()
+{
+    char *c = (char *)malloc(sizeof(char) * 17);
+    for (unsigned int i = 0; i < 16; i++)
+    {
+        unsigned int r = (rand() % (122 - 97 +1)) + 97;
+        c[i] = (char)r;
+    }
+    c[16] = '\0';
+    return c;
+}
 int main(int argc, char **argv)
 {
     if (argc < 3)
@@ -56,6 +67,18 @@ int main(int argc, char **argv)
         fprintf(stderr, "Erro: impressao do novo indice\n");
         return 1;
     }
+    /*
+    printf("Inserindo 1000 chaves aleatorias\n");
+    for (unsigned int i = 0; i < 1000; i++)
+    {
+        char* c = create_randomstring();
+        index_put(idx, create_randomstring());
+    }
+    if (index_print(idx))
+    {
+        fprintf(stderr, "Erro: impressao do novo indice\n");
+        return 1;
+    }*/
     index_destroy_hash(&idx);
     return 0;
 }
