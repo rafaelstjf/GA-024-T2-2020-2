@@ -79,10 +79,10 @@ static void limit_char(char *str)
  */
 static void remove_specchar(char *sequence)
 {
-    if (sequence)
+    if (sequence && strcmp(sequence, "") != 0)
     {
-        int it = strlen((sequence)) - 1;
-        for (unsigned int i = it; i >= 0; i--)
+        int buf_s = strlen((sequence)) - 1;
+        for (int i = buf_s; i > 0; i--)
         {
             if ((int)sequence[i] < 48)
                 sequence[i] = '\0';
@@ -162,37 +162,57 @@ static int index_hashing_funct(const char *key, int size)
  * ----------------------------
  *   Opens a file and saves its contents in a string
  *
- *   strstream: string where the contents will be saved
  *   file_name: string containing the file's name
  *
- *   returns: an integer signaling if the operation was successfull or not
+ *   returns: a string where the file's contents are stored
  */
 
-static int index_readfile(char **strstream, const char *file_name)
+static char *index_readfile(const char *file_name)
 {
-    FILE *input;
+    FILE *input = NULL;
+    char *strstream = NULL;
     input = fopen(file_name, "r");
     unsigned int buffer_size = 256;
     if (!input)
     {
         fprintf(stdout, "Failed to open the file!\n");
-        return false;
+        fclose(input);
+        return NULL;
     }
     else
     {
-        *strstream = calloc(1, 1); //aloca e inicia tudo com 0
+        fseek(input, 0, SEEK_SET);
+        if (strstream)
+            free(strstream);
         char buffer[buffer_size];
+        memset(buffer, '\0', buffer_size * sizeof(char));
         while (fgets(buffer, buffer_size, input)) // read from stdin
         {
-            (*strstream) = realloc((*strstream), strlen(*strstream) + 1 + strlen(buffer));
+            unsigned int new_size;
             if (!strstream)
             {
-                return false;
+                new_size = 1 + buffer_size;
+                strstream = malloc(sizeof(char) * new_size);
+                memset(strstream, '\0', new_size * sizeof(char));
             }
-            strcat((*strstream), buffer);
+            else
+            {
+                new_size = strlen(strstream) + 1 + buffer_size;
+                char *n_strstream = realloc((strstream), new_size * sizeof(char));
+                memset(n_strstream + strlen(strstream), '\0', (buffer_size + 1) * sizeof(char));
+                strstream = n_strstream;
+            }
+            if (!strstream)
+            {
+                fclose(input);
+                return NULL;
+            }
+            strcat((strstream), buffer);
+            memset(buffer, '\0', buffer_size * sizeof(char));
         }
         fclose(input);
-        return true;
+        printf("Stream on file: %s\n", strstream);
+        return strstream;
     }
 }
 /*
@@ -208,14 +228,11 @@ static int index_readfile(char **strstream, const char *file_name)
 static int index_addkeys(const char *key_file, Index **idx)
 {
     char *search = "\n";
-    char *token;
-    char *strstream;
-    if (index_readfile(&strstream, key_file) == false)
-    {
-        if (strstream)
-            free(strstream);
+    char *token = NULL;
+    char *strstream = NULL;
+    strstream = index_readfile(key_file);
+    if (!strstream)
         return false;
-    }
     token = strtok(strstream, search);
     if (!idx)
     {
@@ -285,40 +302,22 @@ static int index_addkeys(const char *key_file, Index **idx)
  *
  *   returns: an integer signaling if the operation was successfull or not
  */
-static int index_addtext(const char *text_file, Index **idx, int clean)
+static int index_addtext(const char *text_file, Index **idx)
 {
+    char *buffer = NULL;
+    char *strstream = NULL;
+    int line = 1;
     if (!idx)
         return false;
-    if (clean == true)
-    {
-        for (unsigned int i = 0; i < (*idx)->table_size; i++)
-        {
-            Index_node *it = (*idx)->array[i];
-            while (it)
-            {
-                Occurrences *ant = NULL, *it_o = it->occurrences_list;
-                it->occurrences_list = NULL;
-                while (it_o)
-                {
-                    ant = it_o;
-                    it_o = it_o->next;
-                    free(ant);
-                }
-
-                it = it->collisions;
-            }
-        }
-    }
-    char *buffer;
-    char *strstream;
-    int line = 1;
     buffer = (char *)malloc(sizeof(char) * 17);
     if (!buffer)
         return false;
     unsigned size_buffer = strlen(buffer) + 1;
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
-    if (index_readfile(&strstream, text_file) == false)
+    strstream = index_readfile(text_file);
+    printf("TEXTO: %s\n", strstream);
+    if (!strstream)
         return false;
     char *it = strstream;
     while ((it && *it != '\0') || (strcmp(buffer, "") != 0))
@@ -326,7 +325,7 @@ static int index_addtext(const char *text_file, Index **idx, int clean)
     {
         if (*it == ' ' || *it == '\n' || *it == '\0')
         {
-            if (strcmp(buffer, "") != 0)
+            if (strlen(buffer) > 0)
             {
 
                 limit_char(buffer);
@@ -397,8 +396,9 @@ static int index_getsize(const char *key_file)
     int size = 0;
     char *search = "\n";
     char *token;
-    char *strstream;
-    if (index_readfile(&strstream, key_file) == false)
+    char *strstream = NULL;
+    strstream = index_readfile(key_file);
+    if (!strstream)
         return false;
     token = strtok(strstream, search);
     while (token)
@@ -414,6 +414,7 @@ int index_createfrom(const char *key_file, const char *text_file, Index **idx)
     (*idx) = (Index *)malloc(sizeof(Index));
     (*idx)->text_file = (char *)malloc((strlen(text_file) + 1) * sizeof(char));
     (*idx)->num_keys = 0;
+    memset((*idx)->text_file, '\0', sizeof(char) * (strlen(text_file) + 1));
     strcpy((*idx)->text_file, text_file);
     (*idx)->table_size = index_getsize(key_file);
     (*idx)->array = malloc((*idx)->table_size * sizeof(Index_node *));
@@ -421,7 +422,7 @@ int index_createfrom(const char *key_file, const char *text_file, Index **idx)
         (*idx)->array[i] = NULL;
     if (index_addkeys(key_file, idx) == false)
         return false;
-    if (index_addtext(text_file, idx, false) == false)
+    if (index_addtext(text_file, idx) == false)
         return false;
 
     return true;
@@ -431,6 +432,7 @@ int index_get(const Index *idx, const char *key, int **occurrences, int *num_occ
     if (idx)
     {
         char *n_key = malloc(sizeof(char) * (strlen(key) + 1));
+        memset(n_key, '\0', sizeof(char) * (strlen(key) + 1));
         strcpy(n_key, key);
         char *space = strchr(n_key, 32);
         if (space)
@@ -473,27 +475,44 @@ int index_put(Index *idx, const char *key)
     {
         Index_node *it_n = NULL;
         char *n_key = malloc(sizeof(char) * strlen(key) + 1);
+        memset(n_key, '\0', (strlen(key) + 1) * sizeof(char));
         strcpy(n_key, key);
+        char *buffer = NULL;
+        char *strstream = NULL;
+        int line = 1;
+        buffer = (char *)malloc(sizeof(char) * 17);
+        if (!buffer)
+            return false;
+        unsigned size_buffer = strlen(buffer) + 1;
+        memset(buffer, '\0', sizeof(char) * size_buffer);
+        unsigned ind_buffer = 0;
         char *space = strchr(n_key, 32);
         if (space)
         {
-            *space = '\0';
+            while (space)
+            {
+                *space = '\0';
+                (*space)++;
+            }
         }
         limit_char(n_key);
         remove_specchar(n_key);
         //remove all the occurrences of the table
         int index_key = index_hashing_funct(n_key, idx->table_size);
+        printf("Chave : %s Index: %d\n", n_key, index_key);
         if (index_key >= 0)
         {
             if (!idx->array[index_key])
             {
                 idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
-                idx->array[index_key]->key = (char *)malloc(sizeof(char) * strlen(n_key));
+                idx->array[index_key]->key = (char *)malloc(sizeof(char) * (strlen(n_key) + 1));
+                memset(idx->array[index_key]->key, '\0', sizeof(char) * (strlen(n_key) + 1));
                 strcpy(idx->array[index_key]->key, n_key);
                 idx->array[index_key]->occurrences_list = NULL;
                 idx->array[index_key]->collisions = NULL;
                 idx->array[index_key]->num_occurrences = 0;
                 idx->num_keys++;
+                it_n = idx->array[index_key];
             }
             else
             {
@@ -508,13 +527,16 @@ int index_put(Index *idx, const char *key)
                 if (!it_n)
                 {
                     //element doesn't exist yet
-                    ant->collisions = (Index_node *)malloc(sizeof(Index_node));
-                    ant->collisions->key = (char *)malloc(sizeof(char) * strlen(n_key));
-                    strcpy(ant->collisions->key, n_key);
-                    ant->collisions->occurrences_list = NULL;
-                    ant->collisions->collisions = NULL;
-                    ant->collisions->num_occurrences = 0;
+                    it_n = (Index_node *)malloc(sizeof(Index_node));
+                    it_n->key = (char *)malloc(sizeof(char) * (strlen(n_key) + 1));
+                    memset(it_n->key, '\0', sizeof(char) * (strlen(n_key) + 1));
+                    strcpy(it_n->key, n_key);
+                    it_n->occurrences_list = NULL;
+                    it_n->collisions = NULL;
+                    it_n->num_occurrences = 0;
                     idx->num_keys++;
+                    if (ant)
+                        ant->collisions = it_n;
                 }
                 else
                 {
@@ -532,29 +554,25 @@ int index_put(Index *idx, const char *key)
                 }
             }
         }
-        char *buffer;
-        char *strstream;
-        int line = 1;
-        buffer = (char *)malloc(sizeof(char) * 17);
-        if (!buffer)
+        else
             return false;
-        unsigned size_buffer = strlen(buffer) + 1;
-        memset(buffer, '\0', sizeof(char) * size_buffer);
-        unsigned ind_buffer = 0;
-        if (index_readfile(&strstream, idx->text_file) == false)
+        strstream = index_readfile(idx->text_file);
+        if (!strstream)
             return false;
+        printf("STRSTREAM: %s\n", strstream);
         char *it = strstream;
-        while ((it && *it != '\0') || (strcmp(buffer, "") != 0))
+        while ((it && *it != '\0') || (strlen(buffer) > 0))
         //the text can end but the buffer still has content on it
         {
             if (*it == ' ' || *it == '\n' || *it == '\0')
             {
-                if (strcmp(buffer, "") != 0)
+                if (strlen(buffer) > 0)
                 {
 
                     limit_char(buffer);
                     remove_specchar(buffer);
                     int index = index_hashing_funct(buffer, idx->table_size);
+                    printf("palavra: %s Index: %d\n", buffer, index);
                     if (index == index_key && strcmp(it_n->key, buffer) == 0)
                     {
                         if (!it_n->occurrences_list)
@@ -671,7 +689,8 @@ int index_print(const Index *idx)
             while (it)
             {
                 array[ind] = NULL;
-                array[ind] = (char *)malloc(strlen(it->key) * sizeof(char));
+                array[ind] = (char *)malloc((strlen(it->key) + 1) * sizeof(char));
+                memset(array[ind], '\0', (strlen(it->key) + 1) * sizeof(char));
                 strcpy(array[ind], it->key);
                 ind++;
                 it = it->collisions;
