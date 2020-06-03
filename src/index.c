@@ -172,7 +172,7 @@ static char *index_readfile(const char *file_name)
     FILE *input = NULL;
     char *strstream = NULL;
     input = fopen(file_name, "r");
-    unsigned int buffer_size = 256;
+    unsigned int text_size = 0;
     if (!input)
     {
         fprintf(stdout, "Failed to open the file!\n");
@@ -181,37 +181,20 @@ static char *index_readfile(const char *file_name)
     }
     else
     {
-        fseek(input, 0, SEEK_SET);
+        fseek(input, 0, SEEK_END);
+        text_size = ftell(input);
+        rewind(input);
         if (strstream)
-            free(strstream);
-        char buffer[buffer_size];
-        memset(buffer, '\0', buffer_size * sizeof(char));
-        while (fgets(buffer, buffer_size, input)) // read from stdin
         {
-            unsigned int new_size;
-            if (!strstream)
-            {
-                new_size = 1 + buffer_size;
-                strstream = malloc(sizeof(char) * new_size);
-                memset(strstream, '\0', new_size * sizeof(char));
-            }
-            else
-            {
-                new_size = strlen(strstream) + 1 + buffer_size;
-                char *n_strstream = realloc((strstream), new_size * sizeof(char));
-                memset(n_strstream + strlen(strstream), '\0', (buffer_size + 1) * sizeof(char));
-                strstream = n_strstream;
-            }
-            if (!strstream)
-            {
-                fclose(input);
-                return NULL;
-            }
-            strcat((strstream), buffer);
-            memset(buffer, '\0', buffer_size * sizeof(char));
+            fclose(input);
+            free(strstream);
         }
+        strstream = malloc((text_size + 1) * sizeof(char));
+        if (!strstream)
+            return NULL;
+        memset(strstream, '\0', sizeof(char) * (text_size + 1));
+        fread(strstream, text_size, 1, input);
         fclose(input);
-        printf("Stream on file: %s\n", strstream);
         return strstream;
     }
 }
@@ -316,7 +299,6 @@ static int index_addtext(const char *text_file, Index **idx)
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
     strstream = index_readfile(text_file);
-    printf("TEXTO: %s\n", strstream);
     if (!strstream)
         return false;
     char *it = strstream;
@@ -499,7 +481,6 @@ int index_put(Index *idx, const char *key)
         remove_specchar(n_key);
         //remove all the occurrences of the table
         int index_key = index_hashing_funct(n_key, idx->table_size);
-        printf("Chave : %s Index: %d\n", n_key, index_key);
         if (index_key >= 0)
         {
             if (!idx->array[index_key])
@@ -559,7 +540,6 @@ int index_put(Index *idx, const char *key)
         strstream = index_readfile(idx->text_file);
         if (!strstream)
             return false;
-        printf("STRSTREAM: %s\n", strstream);
         char *it = strstream;
         while ((it && *it != '\0') || (strlen(buffer) > 0))
         //the text can end but the buffer still has content on it
@@ -572,7 +552,6 @@ int index_put(Index *idx, const char *key)
                     limit_char(buffer);
                     remove_specchar(buffer);
                     int index = index_hashing_funct(buffer, idx->table_size);
-                    printf("palavra: %s Index: %d\n", buffer, index);
                     if (index == index_key && strcmp(it_n->key, buffer) == 0)
                     {
                         if (!it_n->occurrences_list)
