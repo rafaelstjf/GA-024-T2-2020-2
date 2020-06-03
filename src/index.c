@@ -557,7 +557,6 @@ int index_put(Index *idx, const char *key)
                             while (it_o->next)
                                 it_o = it_o->next;
                             Occurrences *c = (Occurrences *)malloc(sizeof(Occurrences));
-                            printf("inserindo na linha %d\n", line);
                             c->line = line;
                             c->next = NULL;
                             it_o->next = c;
