@@ -170,9 +170,9 @@ static char *index_readfile(const char *file_name)
             if (ind >= str_size)
             {
                 str_size += 256;
-                char *temp = realloc(strstream, str_size);
+                char *temp = realloc(strstream, str_size*sizeof(char));
                 strstream = temp;
-                memset(strstream + (str_size - 257), '\0', sizeof(char) * (256));
+                memset(strstream + (str_size - 256), '\0', sizeof(char) * (256));
             }
             strstream[ind] = it;
             ind++;
@@ -282,6 +282,7 @@ static int index_addtext(const char *text_file, Index **idx)
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
     strstream = index_readfile(text_file);
+    printf("texto: %s\n", strstream);
     if (!strstream)
         return false;
     char *it = strstream;
