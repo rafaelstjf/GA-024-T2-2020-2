@@ -282,7 +282,6 @@ static int index_addtext(const char *text_file, Index **idx)
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
     strstream = index_readfile(text_file);
-    printf("texto: %s\n", strstream);
     if (!strstream)
         return false;
     char *it = strstream;
