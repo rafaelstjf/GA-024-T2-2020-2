@@ -164,6 +164,7 @@ static char *index_readfile(const char *file_name)
         rewind(input);
         unsigned int str_size = 256;
         strstream = malloc(str_size * sizeof(char));
+        memset(strstream, '\0', sizeof(char) * str_size);
         if (!strstream)
             return NULL;
         while ((it = fgetc(input)) != EOF)
@@ -333,7 +334,7 @@ static int index_addtext(const char *text_file, Index **idx)
             if (ind_buffer >= size_buffer)
             {
                 size_buffer += 17;
-                char *b = realloc(buffer, size_buffer * sizeof(char));
+                char *b = (char *)realloc(buffer, size_buffer * sizeof(char));
                 buffer = b;
                 memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
             }
@@ -342,8 +343,6 @@ static int index_addtext(const char *text_file, Index **idx)
         }
         it++;
     }
-    if (buffer)
-        free(buffer);
     free(strstream);
     return true;
 }
@@ -576,8 +575,6 @@ int index_put(Index *idx, const char *key)
             }
             it++;
         }
-        if (buffer)
-            free(buffer);
         free(strstream);
         free(n_key);
         return true;
