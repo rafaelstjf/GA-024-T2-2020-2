@@ -347,7 +347,7 @@ static int index_addtext(const char *text_file, Index **idx)
         it++;
     }
     free(strstream);
-    if (buffer)
+    if (buffer && strlen(buffer) > 0)
             free(buffer);
     return true;
 }
@@ -582,7 +582,7 @@ int index_put(Index *idx, const char *key)
             it++;
         }
         free(strstream);
-        if (buffer)
+        if (buffer && strlen(buffer) > 0)
             free(buffer);
         free(n_key);
         return true;
