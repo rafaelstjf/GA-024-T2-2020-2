@@ -223,7 +223,9 @@ static int index_addkeys(const char *key_file, Index **idx)
             if (!(*idx)->array[index])
             {
                 (*idx)->array[index] = (Index_node *)malloc(sizeof(Index_node));
-                (*idx)->array[index]->key = token;
+                (*idx)->array[index]->key = malloc(sizeof(char) * (strlen(token) + 1));
+                memset((*idx)->array[index]->key, '\0', strlen(token) + 1);
+                strcpy((*idx)->array[index]->key, token);
                 (*idx)->array[index]->occurrences_list = NULL;
                 (*idx)->array[index]->collisions = NULL;
                 (*idx)->array[index]->num_occurrences = 0;
@@ -252,6 +254,8 @@ static int index_addkeys(const char *key_file, Index **idx)
         }
         token = strtok(NULL, search);
     }
+    free(strstream);
+    free(token);
     return true;
 }
 /*
@@ -341,6 +345,8 @@ static int index_addtext(const char *text_file, Index **idx)
         }
         it++;
     }
+    if (buffer)
+        free(buffer);
     free(strstream);
     return true;
 }
@@ -573,6 +579,8 @@ int index_put(Index *idx, const char *key)
             }
             it++;
         }
+        if (buffer)
+            free(buffer);
         free(strstream);
         free(n_key);
         return true;
@@ -690,8 +698,9 @@ int index_print(const Index *idx)
         {
             if (array[i])
             {
+                char *t = array[i];
                 array[i] = NULL;
-                //free(array[i]);
+                free(t);
             }
         }
         free(array);
@@ -727,6 +736,8 @@ int index_destroy_hash(Index **idx)
                     }
                     temp = it;
                     it = it->collisions;
+                    if (temp->key)
+                        free(temp->key);
                     free(temp);
                 }
             }
