@@ -64,7 +64,7 @@ static void limit_char(char *str)
         unsigned int s = strlen(str);
         if (s > MAX_CHAR)
         {
-            memset(str + MAX_CHAR, '\0', sizeof(char) * (s - MAX_CHAR));
+            memset(str + MAX_CHAR - 1, '\0', sizeof(char) * (s - MAX_CHAR));
         }
     }
 }
@@ -172,7 +172,7 @@ static char *index_readfile(const char *file_name)
                 str_size += 256;
                 char *temp = realloc(strstream, str_size);
                 strstream = temp;
-                memset(strstream + (str_size - 256), '\0', sizeof(char) * (256));
+                memset(strstream + (str_size - 257), '\0', sizeof(char) * (256));
             }
             strstream[ind] = it;
             ind++;
@@ -338,7 +338,7 @@ static int index_addtext(const char *text_file, Index **idx)
                 size_buffer += 17;
                 char *b = (char *)realloc(buffer, size_buffer * sizeof(char));
                 buffer = b;
-                memset(buffer + (size_buffer - 17), '\0', 17 * sizeof(char));
+                memset(buffer + (size_buffer - 18), '\0', 17 * sizeof(char));
             }
             buffer[ind_buffer] = *it;
             ind_buffer++;
@@ -471,14 +471,15 @@ int index_put(Index *idx, const char *key)
         {
             if (!idx->array[index_key])
             {
-                idx->array[index_key] = (Index_node *)malloc(sizeof(Index_node));
-                idx->array[index_key]->key = (char *)malloc(sizeof(char) * (strlen(n_key) + 1));
-                memset(idx->array[index_key]->key, '\0', sizeof(char) * (strlen(n_key) + 1));
-                strcpy(idx->array[index_key]->key, n_key);
-                idx->array[index_key]->occurrences_list = NULL;
-                idx->array[index_key]->collisions = NULL;
-                idx->array[index_key]->num_occurrences = 0;
+                it_n = (Index_node *)malloc(sizeof(Index_node));
+                it_n->key = (char *)malloc(sizeof(char) * (strlen(n_key) + 1));
+                memset(it_n->key, '\0', sizeof(char) * (strlen(n_key) + 1));
+                strcpy(it_n->key, n_key);
+                it_n->occurrences_list = NULL;
+                it_n->collisions = NULL;
+                it_n->num_occurrences = 0;
                 idx->num_keys++;
+                idx->array[index_key] = it_n;
                 it_n = idx->array[index_key];
             }
             else
@@ -736,8 +737,9 @@ int index_destroy_hash(Index **idx)
                     }
                     temp = it;
                     it = it->collisions;
-                    if (temp->key)
+                    if (temp->key){
                         free(temp->key);
+                    }
                     free(temp);
                 }
             }
