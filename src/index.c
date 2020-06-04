@@ -123,7 +123,6 @@ static int index_hashing_funct(const char *key, int size)
     if (key)
     {
         int result = 0;
-        int off = 0;
         int i = 0;
         while (key[i] != '\0')
         {
@@ -152,7 +151,6 @@ static char *index_readfile(const char *file_name)
     char it = '\0';
     unsigned int ind = 0;
     input = fopen(file_name, "r");
-    unsigned int text_size = 0;
     if (!input)
     {
         fprintf(stdout, "Failed to open the file!\n");
@@ -382,7 +380,7 @@ int index_createfrom(const char *key_file, const char *text_file, Index **idx)
     strcpy((*idx)->text_file, text_file);
     (*idx)->table_size = index_getsize(key_file);
     (*idx)->array = malloc((*idx)->table_size * sizeof(Index_node *));
-    for (unsigned int i = 0; i < (*idx)->table_size; i++)
+    for (int i = 0; i < (*idx)->table_size; i++)
         (*idx)->array[i] = NULL;
     if (index_addkeys(key_file, idx) == false)
         return false;
@@ -641,7 +639,7 @@ int index_print(const Index *idx)
         //copy
         char **array;
         array = (char **)malloc(idx->num_keys * sizeof(char *));
-        unsigned int ind = 0;
+        int ind = 0;
         unsigned int j_ind = 0;
         while (ind < idx->num_keys)
         {
@@ -657,28 +655,10 @@ int index_print(const Index *idx)
             }
             j_ind++;
         }
-        //sort using bubblesort
-        /*
-        char *temp = NULL;
-        for (unsigned int i = 0; i < idx->num_keys - 1; i++)
-        {
-            for (unsigned int j = i + 1; j < idx->num_keys; j++)
-            {
-                if (strcmp(array[i], array[j]) > 0)
-                {
-                    if (temp)
-                        free(temp);
-                    temp = (char *)malloc(sizeof(char) * strlen(array[i]));
-                    strcpy(temp, array[i]);
-                    strcpy(array[i], array[j]);
-                    strcpy(array[j], temp);
-                }
-            }
-        }*/
         //sort
         quicksort(array, 0, idx->num_keys - 1);
         //print
-        for (unsigned int i = 0; i < idx->num_keys; i++)
+        for (int i = 0; i < idx->num_keys; i++)
         {
 
             Index_node *it = idx->array[index_hashing_funct(array[i], idx->table_size)];
@@ -706,7 +686,7 @@ int index_print(const Index *idx)
             }
         }
         /* invalid pointer error*/
-        for (unsigned int i = 0; i < idx->num_keys; i++)
+        for (int i = 0; i < idx->num_keys; i++)
         {
             if (array[i])
             {
@@ -722,11 +702,11 @@ int index_print(const Index *idx)
 }
 int index_destroy_hash(Index **idx)
 {
-    if (!idx)
+    if (!(*idx))
         return true;
     else
     {
-        for (unsigned int i = 0; i < (*idx)->table_size; i++)
+        for (int i = 0; i < (*idx)->table_size; i++)
         {
             if ((*idx)->array[i])
             {
@@ -747,13 +727,7 @@ int index_destroy_hash(Index **idx)
                     }
                     temp = it;
                     it = it->collisions;
-                    if (temp)
-                    {
-                        /*if (temp->key)
-                            free(temp->key);
-                            */
-                        free(temp);
-                    }
+                    free(temp);
                 }
             }
         }
