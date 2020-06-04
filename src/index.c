@@ -109,29 +109,6 @@ static void remove_specchar(char *sequence)
     }
 }
 /*
- * Function: substring
- * ----------------------------
- *   Returns the substring of a sequence of characters
- *
- *   source: sequence of characters
- *   beg: index where the substring begins
- *   end: index where the substring ends
- *
- *   returns: the substring of the sequence of characters
- */
-static char *substring(char *source, int beg, int end)
-{
-    char *sub = (char *)malloc(sizeof(char) * (end - beg + 1));
-    int j = 0;
-    for (int i = beg; i < end; i++)
-    {
-        sub[j] = source[i];
-        j++;
-    }
-    sub[j] = '\0';
-    return sub;
-}
-/*
  * Function: index_hashing_funct
  * ----------------------------
  *   Computes the index of the hash table using a key
@@ -172,6 +149,8 @@ static char *index_readfile(const char *file_name)
 {
     FILE *input = NULL;
     char *strstream = NULL;
+    char it = '\0';
+    unsigned int ind = 0;
     input = fopen(file_name, "r");
     unsigned int text_size = 0;
     if (!input)
@@ -182,19 +161,23 @@ static char *index_readfile(const char *file_name)
     }
     else
     {
-        fseek(input, 0, SEEK_END);
-        text_size = ftell(input);
         rewind(input);
-        if (strstream)
-        {
-            fclose(input);
-            free(strstream);
-        }
-        strstream = malloc((text_size + 1) * sizeof(char));
+        unsigned int str_size = 256;
+        strstream = malloc(str_size * sizeof(char));
         if (!strstream)
             return NULL;
-        memset(strstream, '\0', sizeof(char) * (text_size + 1));
-        fread(strstream, text_size, 1, input);
+        while ((it = fgetc(input)) != EOF)
+        {
+            if (ind >= str_size)
+            {
+                str_size += 256;
+                char *temp = realloc(strstream, str_size);
+                strstream = temp;
+                memset(strstream + (str_size - 256), '\0', sizeof(char) * (256));
+            }
+            strstream[ind] = it;
+            ind++;
+        }
         fclose(input);
         return strstream;
     }
@@ -214,16 +197,12 @@ static int index_addkeys(const char *key_file, Index **idx)
     char *search = "\n";
     char *token = NULL;
     char *strstream = NULL;
+    if (!idx)
+        return false;
     strstream = index_readfile(key_file);
     if (!strstream)
         return false;
     token = strtok(strstream, search);
-    if (!idx)
-    {
-        if (strstream)
-            free(strstream);
-        return false;
-    }
     if (!token) //there are no keys in the file
     {
         if (strstream)
@@ -293,10 +272,10 @@ static int index_addtext(const char *text_file, Index **idx)
     int line = 1;
     if (!idx)
         return false;
-    buffer = (char *)malloc(sizeof(char) * 17);
+    unsigned size_buffer = MAX_CHAR + 1;
+    buffer = (char *)malloc(sizeof(char) * size_buffer);
     if (!buffer)
         return false;
-    unsigned size_buffer = strlen(buffer) + 1;
     memset(buffer, '\0', sizeof(char) * size_buffer);
     unsigned ind_buffer = 0;
     strstream = index_readfile(text_file);
@@ -343,7 +322,9 @@ static int index_addtext(const char *text_file, Index **idx)
             }
             //got a word
             if (*it == '\n')
+            {
                 line++;
+            }
             memset(buffer, '\0', sizeof(char) * size_buffer);
             ind_buffer = 0;
         }
@@ -352,7 +333,8 @@ static int index_addtext(const char *text_file, Index **idx)
             if (ind_buffer >= size_buffer)
             {
                 size_buffer += 17;
-                buffer = realloc(buffer, size_buffer * sizeof(char));
+                char *b = realloc(buffer, size_buffer * sizeof(char));
+                buffer = b;
                 memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
             }
             buffer[ind_buffer] = *it;
@@ -463,10 +445,10 @@ int index_put(Index *idx, const char *key)
         char *buffer = NULL;
         char *strstream = NULL;
         int line = 1;
-        buffer = (char *)malloc(sizeof(char) * 17);
+        unsigned size_buffer = MAX_CHAR + 1;
+        buffer = (char *)malloc(sizeof(char) * size_buffer);
         if (!buffer)
             return false;
-        unsigned size_buffer = strlen(buffer) + 1;
         memset(buffer, '\0', sizeof(char) * size_buffer);
         unsigned ind_buffer = 0;
         char *space = strchr(n_key, 32);
@@ -542,7 +524,7 @@ int index_put(Index *idx, const char *key)
         if (!strstream)
             return false;
         char *it = strstream;
-        while ((it && *it != '\0') || (strlen(buffer) > 0))
+        while ((it && *it != '\0') || (strcmp(buffer, "") != 0))
         //the text can end but the buffer still has content on it
         {
             if (*it == ' ' || *it == '\n' || *it == '\0')
@@ -585,7 +567,8 @@ int index_put(Index *idx, const char *key)
                 if (ind_buffer >= size_buffer)
                 {
                     size_buffer += 17;
-                    buffer = realloc(buffer, size_buffer * sizeof(char));
+                    char *b = realloc(buffer, size_buffer * sizeof(char));
+                    buffer = b;
                     memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
                 }
                 buffer[ind_buffer] = *it;
