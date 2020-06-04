@@ -338,16 +338,16 @@ static int index_addtext(const char *text_file, Index **idx)
                 size_buffer += 17;
                 char *b = (char *)realloc(buffer, size_buffer * sizeof(char));
                 buffer = b;
-                memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
+                memset(buffer + (size_buffer - 17), '\0', 17 * sizeof(char));
             }
             buffer[ind_buffer] = *it;
             ind_buffer++;
         }
         it++;
     }
-    if (buffer)
-        free(buffer);
     free(strstream);
+    if (buffer && strlen(buffer) > 0)
+            free(buffer);
     return true;
 }
 /*
@@ -572,16 +572,16 @@ int index_put(Index *idx, const char *key)
                     size_buffer += 17;
                     char *b = realloc(buffer, size_buffer * sizeof(char));
                     buffer = b;
-                    memset(buffer + ind_buffer, '\0', 17 * sizeof(char));
+                    memset(buffer + (size_buffer - 17), '\0', 17 * sizeof(char));
                 }
                 buffer[ind_buffer] = *it;
                 ind_buffer++;
             }
             it++;
         }
-        if (buffer)
-            free(buffer);
         free(strstream);
+        if (buffer && strlen(buffer) > 0)
+            free(buffer);
         free(n_key);
         return true;
     }
