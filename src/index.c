@@ -83,6 +83,7 @@ static void remove_specchar(char *sequence)
     {
         int buf_s = strlen((sequence)) - 1;
         for (int i = buf_s; i > 0; i--)
+        //bigger than 0 because the user can search for "." or any other single special character
         {
             if ((int)sequence[i] < 48)
                 sequence[i] = '\0';
